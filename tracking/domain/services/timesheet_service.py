@@ -98,9 +98,10 @@ class TimesheetService:
         hours: float,
     ) -> TimeEntry:
         """
-        Set manual hours for (user, date, project, task_type). Creates a manual entry
-        or updates the existing one for that cell. Other timer entries for the same
-        (user, date, project, task) are left as-is (totals sum).
+        Set manual hours for (user, date, project, task_type). Replaces all completed
+        entries for that cell (both timer and manual) with a single manual entry, so the
+        saved total always equals exactly what the user typed.
+        Active (running) timers are left untouched.
         Validates: non-negative hours, project_id/task_type_id exist when provided.
         """
         if hours < 0:
@@ -111,29 +112,20 @@ class TimesheetService:
             raise TimesheetValidationError("Invalid task type.", code="invalid_task_type")
 
         duration_seconds = max(0, int(round(hours * 3600)))
-        # Use noon on the date to avoid timezone boundary issues
         tz = timezone.get_current_timezone()
         day_start = timezone.make_aware(
             datetime.combine(entry_date, datetime.min.time()), tz
         )
-        # Find existing manual entry for this (user, date, project, task)
-        manual = (
-            TimeEntry.objects.filter(
-                user_id=user_id,
-                project_id=project_id,
-                task_type_id=task_type_id,
-                started_at__date=entry_date,
-                ended_at__date=entry_date,
-                manual_duration_seconds__isnull=False,
-            )
-            .order_by("id")
-            .first()
-        )
-        if manual:
-            manual.manual_duration_seconds = duration_seconds
-            manual.save(update_fields=["manual_duration_seconds"])
-            return manual
-        # Create new manual entry
+        # Delete all completed entries for this cell (timer and manual alike) so that
+        # the new manual entry is the sole source of truth for this day/project/task.
+        # Active timers (ended_at=None) are preserved.
+        TimeEntry.objects.filter(
+            user_id=user_id,
+            project_id=project_id,
+            task_type_id=task_type_id,
+            started_at__date=entry_date,
+            ended_at__isnull=False,
+        ).delete()
         return TimeEntry.objects.create(
             user_id=user_id,
             project_id=project_id,
