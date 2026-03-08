@@ -11,6 +11,7 @@ from django.shortcuts import redirect, render
 from tracking.application.dtos import UpdateTimeEntryInputDTO
 from tracking.domain.services.timesheet_service import TimesheetValidationError
 from tracking.use_cases.generate_weekly_timesheet import execute as generate_weekly_timesheet
+from tracking.use_cases.has_entries_in_week import execute as has_entries_in_week
 from tracking.use_cases.update_time_entry import execute as update_time_entry_uc
 
 TIMESHEET_PAGE = "tracking/timesheet.html"
@@ -60,8 +61,9 @@ def get_week_context_for_user(
     prev_param = f"{prev_week.isocalendar()[0]}-W{prev_week.isocalendar()[1]:02d}"
     next_param = f"{next_week.isocalendar()[0]}-W{next_week.isocalendar()[1]:02d}"
     current_week_start = _monday_of_week(date.today())
-    prev_enabled = True
-    next_enabled = next_week <= current_week_start
+    # Only show/enable prev/next when there is data in that week
+    prev_enabled = has_entries_in_week(user_id, prev_week)
+    next_enabled = has_entries_in_week(user_id, next_week)
     return {
         "timesheet": timesheet,
         "week_days": week_days,

@@ -80,6 +80,15 @@ class TimesheetService:
         ]
         return (week_start, rows)
 
+    def user_has_entries_in_week(self, user_id: int, week_start: date) -> bool:
+        """Return True if the user has any time entries in the given week (Monday)."""
+        week_end = week_start + timedelta(days=6)
+        return TimeEntry.objects.filter(
+            user_id=user_id,
+            started_at__date__gte=week_start,
+            started_at__date__lte=week_end,
+        ).exists()
+
     def update_or_create_entry(
         self,
         user_id: int,

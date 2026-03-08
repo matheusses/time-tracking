@@ -10,8 +10,6 @@
      hx-swap="innerHTML"
      hx-push-url="{% url 'tracking:timesheet' %}?week={{ prev_param }}"
      hx-trigger="click">← Previous</a>
-  {% else %}
-  <span class="rounded border border-gray-200 bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-400 cursor-not-allowed" aria-disabled="true">← Previous</span>
   {% endif %}
   <span class="text-sm font-medium text-gray-700">
     Week of {{ week_start|date:"M j" }} – {{ week_start|date:"o" }}-W{{ week_start|date:"W" }}
@@ -24,8 +22,6 @@
      hx-swap="innerHTML"
      hx-push-url="{% url 'tracking:timesheet' %}?week={{ next_param }}"
      hx-trigger="click">Next →</a>
-  {% else %}
-  <span class="rounded border border-gray-200 bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-400 cursor-not-allowed" aria-disabled="true">Next →</span>
   {% endif %}
   <span class="ml-auto flex items-center gap-2">
     {% if timesheet_editable %}

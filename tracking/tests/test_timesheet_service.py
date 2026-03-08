@@ -195,6 +195,50 @@ class TimesheetServiceUpdateOrCreateTests(TestCase):
         self.assertIn("non-negative", str(cm.exception))
 
 
+class UserHasEntriesInWeekTests(TestCase):
+    """Test user_has_entries_in_week: True only when user has entries in that week."""
+
+    def setUp(self):
+        self.service = TimesheetService()
+        self.user = UserFactory()
+        self.week_start = date(2025, 3, 3)  # Monday
+
+    def test_empty_week_returns_false(self):
+        self.assertFalse(self.service.user_has_entries_in_week(self.user.id, self.week_start))
+
+    def test_week_with_entry_returns_true(self):
+        project = ProjectFactory()
+        task = TaskTypeFactory()
+        tz = timezone.get_current_timezone()
+        day_start = timezone.make_aware(
+            datetime(2025, 3, 3, 10, 0),
+            tz,
+        )
+        TimeEntryFactory(
+            user=self.user,
+            project=project,
+            task_type=task,
+            started_at=day_start,
+            ended_at=day_start + timedelta(hours=1),
+        )
+        self.assertTrue(self.service.user_has_entries_in_week(self.user.id, self.week_start))
+
+    def test_other_user_entries_do_not_count(self):
+        other_user = UserFactory()
+        project = ProjectFactory()
+        task = TaskTypeFactory()
+        tz = timezone.get_current_timezone()
+        day_start = timezone.make_aware(datetime(2025, 3, 3, 10, 0), tz)
+        TimeEntryFactory(
+            user=other_user,
+            project=project,
+            task_type=task,
+            started_at=day_start,
+            ended_at=day_start + timedelta(hours=1),
+        )
+        self.assertFalse(self.service.user_has_entries_in_week(self.user.id, self.week_start))
+
+
 class DaysInWeekTests(TestCase):
     def test_returns_seven_days_from_monday(self):
         week_start = date(2025, 3, 3)  # Monday
