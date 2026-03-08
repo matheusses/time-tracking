@@ -29,9 +29,9 @@
 
 ## Tasks
 
-- [ ] 1.0 Create Django project and app structure (Django 5.2+ or 6.0+)
-- [ ] 2.0 Configure PostgreSQL database and connection
-- [ ] 3.0 Add HTMX and Tailwind CSS (CDN or build; align with django-htmx-tailwind skill)
-- [ ] 4.0 Establish folder structure reflecting ADR layers (e.g. `use_cases/`, `domain/services/`, `domain/models/`, views/templates)
-- [ ] 5.0 Document setup, run, and test commands (local and Docker) in README; security considerations and CODEOWNERS
-- [ ] 6.0 Add multi-stage Dockerfile and Docker Compose: app service + PostgreSQL, env/config for DB and secrets. Add `docker-compose-debug.yml` for debug/development (volume mounts, debug port, runserver/shell). Document Docker and debug-compose commands in README
+- [x] 1.0 Create Django project and app structure (Django 5.2+ or 6.0+)
+- [x] 2.0 Configure PostgreSQL database and connection
+- [x] 3.0 Add HTMX and Tailwind CSS (CDN or build; align with django-htmx-tailwind skill)
+- [x] 4.0 Establish folder structure reflecting ADR layers (e.g. `use_cases/`, `domain/services/`, `domain/models/`, views/templates)
+- [x] 5.0 Document setup, run, and test commands (local and Docker) in README; security considerations and CODEOWNERS
+- [x] 6.0 Add multi-stage Dockerfile and Docker Compose: app service + PostgreSQL, env/config for DB and secrets. Add `docker-compose-debug.yml` for debug/development (volume mounts, debug port, runserver/shell). Document Docker and debug-compose commands in README

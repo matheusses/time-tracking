@@ -1,0 +1,50 @@
+# Git and version control
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.venv
+venv
+env
+ENV
+.pdm-python
+.pixi
+.ruff_cache
+.mypy_cache
+.pytest_cache
+.coverage
+htmlcov
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDE and OS
+.idea
+.vscode
+*.swp
+.DS_Store
+
+# Docs and non-runtime
+docs
+*.md
+!README.md
+
+# Tests (optional: include if you run tests in image)
+# tests
+
+# Cursor/agent
+.cursor
+.agents
+*.mdc
+
+# Other
+*.log
+staticfiles
+db.sqlite3
+local_settings.py

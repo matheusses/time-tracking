@@ -1,0 +1,38 @@
+# Production-like Compose: Django app + PostgreSQL
+# Usage: docker compose up --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${PGDATABASE:-timetracking}
+      POSTGRES_USER: ${PGUSER:-postgres}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-postgres}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-postgres} -d ${PGDATABASE:-timetracking}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${PGUSER:-postgres}:${PGPASSWORD:-postgres}@db:5432/${PGDATABASE:-timetracking}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-me-in-production}
+      DJANGO_DEBUG: "false"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,app
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn project.wsgi:application --bind 0.0.0.0:8000 --workers 2"
+
+volumes:
+  pgdata:

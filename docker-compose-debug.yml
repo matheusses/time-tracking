@@ -1,0 +1,40 @@
+# Debug/development Compose: volume mounts, runserver or shell, optional debug port
+# Usage: docker compose -f docker-compose-debug.yml up --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${PGDATABASE:-timetracking}
+      POSTGRES_USER: ${PGUSER:-postgres}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-postgres}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-postgres} -d ${PGDATABASE:-timetracking}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+      - "5678:5678"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${PGUSER:-postgres}:${PGPASSWORD:-postgres}@db:5432/${PGDATABASE:-timetracking}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-secret-key-min-50-chars}
+      DJANGO_DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    # Run development server with live reload; replace with shell for debugging
+    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
+
+volumes:
+  pgdata:
