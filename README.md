@@ -5,7 +5,7 @@ A modular monolith time-tracking application built with **Django 5.2+**, **Postg
 ## Project overview and purpose
 
 - **Track time** with an active timer (single running timer per user). Start/stop from the home page via HTMX; optional project and task-type dropdowns (scoped by user's client).
-- View and edit a weekly timesheet (planned).
+- **Weekly timesheet**: view time aggregated by project and task type per day; navigate weeks (prev/next) with HTMX partial updates; inline-edit hours in any cell (manual entry or adjustment). Implemented in `tracking`: `TimesheetService`, `GenerateWeeklyTimesheetUseCase`, `UpdateTimeEntryUseCase`, and HTMX views/partials.
 - **Project & client management** (see below): clients, projects, and task types live in the `project_management` app. Admin manages them and assigns each user to a client; non-admin users only see options for their client.
 
 The codebase follows clean layering: views call use cases, use cases call domain services, and only domain services use the Django ORM.
@@ -78,6 +78,15 @@ The codebase follows clean layering: views call use cases, use cases call domain
 - **One active timer per user**: starting a new timer automatically stops any existing running timer for that user.
 - **Flow**: User clicks "Start timer" → view calls `StartTimerUseCase` → `TimerService` stops any active timer, then creates a new `TimeEntry` with `ended_at=None`. User clicks "Stop" → `StopTimerUseCase` → `TimerService` sets `ended_at=now()` and returns duration.
 - **Layers**: Views (HTMX) → use cases → `TimerService` → Django ORM. All DB access for timers is in `tracking.domain.services.timer_service.TimerService`.
+
+---
+
+## Weekly timesheet
+
+- **Route**: `/timesheet/` (optional `?week=YYYY-Www`, e.g. `2025-W10`). Requires login.
+- **Behavior**: One optimized query loads all time entries for the week; grid shows rows (project × task type) and columns (Mon–Sun). Previous/Next week use HTMX to swap only the grid (no full-page reload). Each cell is an inline-editable hours field; on change, HTMX POSTs to `/timesheet/update/` and the cell is replaced with the updated value.
+- **Manual hours**: Time entries can have an optional `manual_duration_seconds` (e.g. for manual log or adjustment). Timer entries and manual entries for the same (user, date, project, task) are summed in the cell.
+- **Layers**: `tracking.views.timesheet_views` → `GenerateWeeklyTimesheetUseCase` / `UpdateTimeEntryUseCase` → `TimesheetService` → ORM.
 
 ---
 

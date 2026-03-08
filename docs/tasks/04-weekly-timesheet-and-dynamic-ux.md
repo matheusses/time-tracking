@@ -64,8 +64,10 @@ sequenceDiagram
 
 ## Tasks
 
-- [ ] 1.0 Implement TimesheetService and weekly aggregation (project–task × day; optimize queries to prevent N+1 in grid)
-- [ ] 2.0 Implement GenerateWeeklyTimesheetUseCase and view for weekly grid; support week parameter for navigation
-- [ ] 3.0 Add HTMX-driven week navigation (previous/next week) with partial updates (no full-page reload)
-- [ ] 4.0 Implement inline editing of time entry values in the grid (HTMX PATCH/PUT or POST with partial response)
-- [ ] 5.0 Manual entry and update of hours for any day — see **Task 06 (Manual Entry)** for full checklist (same use case/service; validation and persistence in domain/service layer)
+- [x] 1.0 Implement TimesheetService and weekly aggregation (project–task × day; optimize queries to prevent N+1 in grid)
+- [x] 2.0 Implement GenerateWeeklyTimesheetUseCase and view for weekly grid; support week parameter for navigation
+- [x] 3.0 Add HTMX-driven week navigation (previous/next week) with partial updates (no full-page reload)
+- [x] 4.0 Implement inline editing of time entry values in the grid (HTMX PATCH/PUT or POST with partial response)
+- [x] 5.0 Manual entry and update of hours for any day — see **Task 06 (Manual Entry)** for full checklist (same use case/service; validation and persistence in domain/service layer)
+
+**Note:** Implemented under the `tracking` app: `tracking/domain/services/timesheet_service.py`, `tracking/use_cases/generate_weekly_timesheet.py`, `tracking/use_cases/update_time_entry.py`, `tracking/views/timesheet_views.py`, `templates/tracking/timesheet.html`, `templates/tracking/_timesheet_grid.html`, `templates/tracking/_timesheet_cell.html`. Optional `manual_duration_seconds` on `TimeEntry` for manual hours; grid shows project–task × day with HTMX week nav and inline-edit cells.

@@ -4,6 +4,9 @@
 <div class="space-y-6">
   {% if user.is_authenticated %}
   {% include "tracking/_timer_partial.html" with active_timer=active_timer timer_options=timer_options %}
+  <p class="text-sm text-gray-600">
+    <a href="{% url 'tracking:timesheet' %}" class="text-green-600 hover:text-green-800 font-medium">Weekly timesheet</a> — view and edit time by week.
+  </p>
   {% endif %}
   <div class="rounded-lg bg-white p-6 shadow">
     <h2 class="text-lg font-medium text-gray-900">Welcome</h2>

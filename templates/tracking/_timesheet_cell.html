@@ -1,0 +1,19 @@
+{# Inline-edit cell: form with hours input. HTMX POST returns this partial to replace the cell. #}
+{% load tracking_extras %}
+<form class="inline"
+      hx-post="{% url 'tracking:timesheet_update' %}"
+      hx-target="closest td"
+      hx-swap="innerHTML"
+      hx-trigger="change delay:200ms">
+  {% csrf_token %}
+  <input type="hidden" name="date" value="{{ date.isoformat }}" />
+  <input type="hidden" name="project_id" value="{{ project_id|default:'' }}" />
+  <input type="hidden" name="task_type_id" value="{{ task_type_id|default:'' }}" />
+  <input type="number"
+         name="hours"
+         value="{{ total_seconds|seconds_to_hours }}"
+         step="0.25"
+         min="0"
+         class="w-16 rounded border border-gray-300 px-1 py-0.5 text-sm focus:border-green-500 focus:ring-1 focus:ring-green-500"
+         aria-label="Hours for {{ date|date:'M j' }}" />
+</form>

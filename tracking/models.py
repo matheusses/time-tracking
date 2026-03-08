@@ -36,6 +36,8 @@ class TimeEntry(models.Model):
     )
     started_at = models.DateTimeField()
     ended_at = models.DateTimeField(null=True, blank=True)
+    # Optional override for manual entries (started_at/ended_at may be same-day midnight).
+    manual_duration_seconds = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["-started_at"]
@@ -50,6 +52,9 @@ class TimeEntry(models.Model):
 
     @property
     def duration_seconds(self):
+        """Effective duration: manual override if set, else computed from started_at/ended_at."""
+        if self.manual_duration_seconds is not None:
+            return self.manual_duration_seconds
         if self.ended_at is None:
             return None
         delta = self.ended_at - self.started_at
