@@ -4,8 +4,8 @@ A modular monolith time-tracking application built with **Django 5.2+**, **Postg
 
 ## Project overview and purpose
 
-- **Track time** with an active timer (single running timer per user). Start/stop from the home page via HTMX; optional project and task-type dropdowns (scoped by user's client).
-- **Weekly timesheet**: view time aggregated by project and task type per day; navigate weeks (prev/next) with HTMX partial updates; inline-edit hours in any cell (manual entry or adjustment). Implemented in `tracking`: `TimesheetService`, `GenerateWeeklyTimesheetUseCase`, `UpdateTimeEntryUseCase`, and HTMX views/partials.
+- **Track time** with an active timer (single running timer per user). Start/stop from the home page via HTMX; optional project and task-type dropdowns (scoped by user's client). The **first project is selected by default** when options are available.
+- **Weekly timesheet**: view time aggregated by project and task type per day; navigate weeks (prev/next) with HTMX partial updates; inline-edit hours in any cell (manual entry or adjustment). The weekly timesheet is **embedded on the tracking (home) page** and also available at `/timesheet/`. By default the grid is **read-only**; use **Edit** to enable cell edits, then **Save** (to persist and return to read-only) or **Cancel** (to discard and return to read-only). Implemented in `tracking`: `TimesheetService`, `GenerateWeeklyTimesheetUseCase`, `UpdateTimeEntryUseCase`, and HTMX views/partials.
 - **Project & client management** (see below): clients, projects, and task types live in the `project_management` app. Admin manages them and assigns each user to a client; non-admin users only see options for their client.
 
 The codebase follows clean layering: views call use cases, use cases call domain services, and only domain services use the Django ORM.
@@ -83,8 +83,8 @@ The codebase follows clean layering: views call use cases, use cases call domain
 
 ## Weekly timesheet
 
-- **Route**: `/timesheet/` (optional `?week=YYYY-Www`, e.g. `2025-W10`). Requires login.
-- **Behavior**: One optimized query loads all time entries for the week; grid shows rows (project × task type) and columns (Mon–Sun). Previous/Next week use HTMX to swap only the grid (no full-page reload). Each cell is an inline-editable hours field; on change, HTMX POSTs to `/timesheet/update/` and the cell is replaced with the updated value.
+- **Routes**: Embedded on the **home page** (`/`) and standalone at **`/timesheet/`** (optional `?week=YYYY-Www`, e.g. `2025-W10`). Requires login.
+- **Behavior**: One optimized query loads all time entries for the week; grid shows rows (project × task type) and columns (Mon–Sun). Previous/Next week use HTMX to swap only the grid (no full-page reload). The grid is **read-only by default**; click **Edit** to enable inline editing, then **Save** (persist and return to read-only) or **Cancel** (discard and return to read-only). In edit mode, each cell is an inline-editable hours field; on change, HTMX POSTs to `/timesheet/update/` and the cell is replaced with the updated value.
 - **Manual hours**: Time entries can have an optional `manual_duration_seconds` (e.g. for manual log or adjustment). Timer entries and manual entries for the same (user, date, project, task) are summed in the cell.
 - **Manual entry**: The grid includes a row for every (project × task type) combination (from the user’s available projects and global task types), so users can add hours in any cell even when no entry exists for that day; submitting creates a new manual time entry. Editing an existing cell updates the manual entry or creates one. See [Manual entry and validation](docs/manual-entry.md).
 - **Validation**: Hours must be non-negative; `project_id` and `task_type_id` (when provided) must exist. Invalid input returns the same cell partial with an error message (no full-page reload).

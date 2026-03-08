@@ -1,23 +1,27 @@
-{# Inline-edit cell: form with hours input. HTMX POST returns this partial to replace the cell. #}
+{# Cell: read-only (hours text) or editable (form). Pass timesheet_editable from grid. #}
 {% load tracking_extras %}
-{% if error_message %}
-<p class="text-xs text-red-600 mb-1" role="alert">{{ error_message }}</p>
+{% if timesheet_editable %}
+  {% if error_message %}
+  <p class="text-xs text-red-600 mb-1" role="alert">{{ error_message }}</p>
+  {% endif %}
+  <form class="inline"
+        hx-post="{% url 'tracking:timesheet_update' %}"
+        hx-target="closest td"
+        hx-swap="innerHTML"
+        hx-trigger="change delay:200ms">
+    {% csrf_token %}
+    <input type="hidden" name="date" value="{{ date.isoformat }}" />
+    <input type="hidden" name="project_id" value="{{ project_id|default:'' }}" />
+    <input type="hidden" name="task_type_id" value="{{ task_type_id|default:'' }}" />
+    <input type="number"
+           name="hours"
+           value="{{ total_seconds|seconds_to_hours }}"
+           step="0.25"
+           min="0"
+           class="w-16 rounded border border-gray-300 px-1 py-0.5 text-sm focus:border-green-500 focus:ring-1 focus:ring-green-500 {% if error_message %}border-red-500{% endif %}"
+           aria-label="Hours for {{ date|date:'M j' }}"
+           aria-invalid="{% if error_message %}true{% else %}false{% endif %}" />
+  </form>
+{% else %}
+  <span class="text-gray-700 tabular-nums">{{ total_seconds|duration_hours }}</span>
 {% endif %}
-<form class="inline"
-      hx-post="{% url 'tracking:timesheet_update' %}"
-      hx-target="closest td"
-      hx-swap="innerHTML"
-      hx-trigger="change delay:200ms">
-  {% csrf_token %}
-  <input type="hidden" name="date" value="{{ date.isoformat }}" />
-  <input type="hidden" name="project_id" value="{{ project_id|default:'' }}" />
-  <input type="hidden" name="task_type_id" value="{{ task_type_id|default:'' }}" />
-  <input type="number"
-         name="hours"
-         value="{{ total_seconds|seconds_to_hours }}"
-         step="0.25"
-         min="0"
-         class="w-16 rounded border border-gray-300 px-1 py-0.5 text-sm focus:border-green-500 focus:ring-1 focus:ring-green-500 {% if error_message %}border-red-500{% endif %}"
-         aria-label="Hours for {{ date|date:'M j' }}"
-         aria-invalid="{% if error_message %}true{% else %}false{% endif %}" />
-</form>

@@ -43,16 +43,14 @@ def _week_range(week_start: date) -> list[date]:
     return [week_start + timedelta(days=i) for i in range(7)]
 
 
-@login_required
-def timesheet_page(request: HttpRequest) -> HttpResponse:
-    """Full timesheet page. GET ?week=YYYY-Www (default: current week)."""
-    week_start = _parse_week_param(request.GET.get("week"))
+def get_week_context_for_user(
+    user_id: int, is_staff: bool, week_start: date | None = None
+) -> dict:
+    """Build context dict for weekly timesheet (timesheet, week_days, nav params)."""
     if week_start is None:
         week_start = _monday_of_week(date.today())
     timesheet = generate_weekly_timesheet(
-        user_id=request.user.id,
-        week_start=week_start,
-        is_staff=request.user.is_staff,
+        user_id=user_id, week_start=week_start, is_staff=is_staff
     )
     week_days = _week_range(week_start)
     prev_week = week_start - timedelta(days=7)
@@ -62,25 +60,34 @@ def timesheet_page(request: HttpRequest) -> HttpResponse:
     prev_param = f"{prev_week.isocalendar()[0]}-W{prev_week.isocalendar()[1]:02d}"
     next_param = f"{next_week.isocalendar()[0]}-W{next_week.isocalendar()[1]:02d}"
     current_week_start = _monday_of_week(date.today())
-    prev_enabled = True  # can always go to a past week
-    next_enabled = next_week <= current_week_start  # disable when next week would be future
-    return render(
-        request,
-        TIMESHEET_PAGE,
-        {
-            "timesheet": timesheet,
-            "week_days": week_days,
-            "week_start": week_start,
-            "prev_week": prev_week,
-            "next_week": next_week,
-            "week_param": week_param,
-            "prev_param": prev_param,
-            "next_param": next_param,
-            "current_week_start": current_week_start,
-            "prev_enabled": prev_enabled,
-            "next_enabled": next_enabled,
-        },
+    prev_enabled = True
+    next_enabled = next_week <= current_week_start
+    return {
+        "timesheet": timesheet,
+        "week_days": week_days,
+        "week_start": week_start,
+        "prev_week": prev_week,
+        "next_week": next_week,
+        "week_param": week_param,
+        "prev_param": prev_param,
+        "next_param": next_param,
+        "current_week_start": current_week_start,
+        "prev_enabled": prev_enabled,
+        "next_enabled": next_enabled,
+    }
+
+
+@login_required
+def timesheet_page(request: HttpRequest) -> HttpResponse:
+    """Full timesheet page. GET ?week=YYYY-Www (default: current week)."""
+    week_start = _parse_week_param(request.GET.get("week"))
+    if week_start is None:
+        week_start = _monday_of_week(date.today())
+    context = get_week_context_for_user(
+        request.user.id, request.user.is_staff, week_start
     )
+    context["timesheet_editable"] = False
+    return render(request, TIMESHEET_PAGE, context)
 
 
 @login_required
@@ -89,38 +96,12 @@ def timesheet_grid_partial(request: HttpRequest) -> HttpResponse:
     week_start = _parse_week_param(request.GET.get("week"))
     if week_start is None:
         week_start = _monday_of_week(date.today())
-    timesheet = generate_weekly_timesheet(
-        user_id=request.user.id,
-        week_start=week_start,
-        is_staff=request.user.is_staff,
+    context = get_week_context_for_user(
+        request.user.id, request.user.is_staff, week_start
     )
-    week_days = _week_range(week_start)
-    prev_week = week_start - timedelta(days=7)
-    next_week = week_start + timedelta(days=7)
-    year, week_num, _ = week_start.isocalendar()
-    week_param = f"{year}-W{week_num:02d}"
-    prev_param = f"{prev_week.isocalendar()[0]}-W{prev_week.isocalendar()[1]:02d}"
-    next_param = f"{next_week.isocalendar()[0]}-W{next_week.isocalendar()[1]:02d}"
-    current_week_start = _monday_of_week(date.today())
-    prev_enabled = week_start < current_week_start
-    next_enabled = next_week <= current_week_start
-    return render(
-        request,
-        TIMESHEET_GRID_PARTIAL,
-        {
-            "timesheet": timesheet,
-            "week_days": week_days,
-            "week_start": week_start,
-            "prev_week": prev_week,
-            "next_week": next_week,
-            "current_week_start": current_week_start,
-            "prev_enabled": prev_enabled,
-            "next_enabled": next_enabled,
-            "week_param": week_param,
-            "prev_param": prev_param,
-            "next_param": next_param,
-        },
-    )
+    # HTMX can request editable=1 (Edit) or editable=0 (read-only)
+    context["timesheet_editable"] = request.GET.get("editable", "0") == "1"
+    return render(request, TIMESHEET_GRID_PARTIAL, context)
 
 
 @login_required
@@ -177,6 +158,7 @@ def update_time_entry(request: HttpRequest) -> HttpResponse:
                 "project_id": project_id,
                 "task_type_id": task_type_id,
                 "error_message": str(e),
+                "timesheet_editable": True,
             },
         )
 
@@ -202,5 +184,6 @@ def update_time_entry(request: HttpRequest) -> HttpResponse:
             "date": entry_date,
             "project_id": project_id,
             "task_type_id": task_type_id,
+            "timesheet_editable": True,
         },
     )

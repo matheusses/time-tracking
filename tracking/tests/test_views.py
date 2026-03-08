@@ -30,6 +30,30 @@ class HomeViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "tracking/home.html")
 
+    def test_home_includes_weekly_timesheet_context(self):
+        """Home page includes timesheet data and grid container for authenticated users."""
+        user = UserFactory()
+        self.client.force_login(user)
+        response = self.client.get(reverse("tracking:home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("timesheet", response.context)
+        self.assertIn("week_days", response.context)
+        self.assertIn("week_param", response.context)
+        self.assertContains(response, "timesheet-grid-container")
+        self.assertContains(response, "Weekly timesheet")
+
+    def test_home_selects_first_project_by_default(self):
+        """Timer dropdown has the first project selected when projects exist."""
+        user = UserFactory(is_staff=True)  # staff so list_projects returns all projects
+        project = ProjectFactory()
+        self.client.force_login(user)
+        response = self.client.get(reverse("tracking:home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'value="{project.id}"')
+        # Template selects first project (forloop.first); option should have selected
+        html = response.content.decode()
+        self.assertIn("selected", html)
+
 
 class TimesheetViewTests(TestCase):
     """Test timesheet page, grid partial, and update endpoint."""
@@ -65,6 +89,18 @@ class TimesheetViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "tracking/_timesheet_grid.html")
+
+    def test_timesheet_grid_partial_editable_0_renders_read_only(self):
+        """Grid with editable=0 shows Edit button and no Save; cells are read-only."""
+        self.client.force_login(self.user)
+        response = self.client.get(
+            reverse("tracking:timesheet_grid"),
+            {"week": "2025-W10", "editable": "0"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Edit")
+        self.assertNotContains(response, "timesheet-save-all")
+        self.assertFalse(response.context.get("timesheet_editable"))
 
     def test_update_time_entry_requires_post(self):
         self.client.force_login(self.user)

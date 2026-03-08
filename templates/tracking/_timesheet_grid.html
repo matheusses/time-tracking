@@ -1,10 +1,11 @@
 {# HTMX partial: week navigation and grid. Loaded into #timesheet-grid-container. #}
 {% load tracking_extras %}
-<nav class="flex items-center gap-4 mb-4" aria-label="Week navigation">
+<div class="timesheet-grid-wrapper {% if not timesheet_editable %}timesheet-readonly{% endif %}" data-week="{{ week_param }}">
+<nav class="flex flex-wrap items-center gap-3 mb-4" aria-label="Week navigation">
   {% if prev_enabled %}
   <a href="{% url 'tracking:timesheet' %}?week={{ prev_param }}"
      class="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-     hx-get="{% url 'tracking:timesheet_grid' %}?week={{ prev_param }}"
+     hx-get="{% url 'tracking:timesheet_grid' %}?week={{ prev_param }}&editable={% if timesheet_editable %}1{% else %}0{% endif %}"
      hx-target="#timesheet-grid-container"
      hx-swap="innerHTML"
      hx-push-url="{% url 'tracking:timesheet' %}?week={{ prev_param }}"
@@ -18,7 +19,7 @@
   {% if next_enabled %}
   <a href="{% url 'tracking:timesheet' %}?week={{ next_param }}"
      class="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-     hx-get="{% url 'tracking:timesheet_grid' %}?week={{ next_param }}"
+     hx-get="{% url 'tracking:timesheet_grid' %}?week={{ next_param }}&editable={% if timesheet_editable %}1{% else %}0{% endif %}"
      hx-target="#timesheet-grid-container"
      hx-swap="innerHTML"
      hx-push-url="{% url 'tracking:timesheet' %}?week={{ next_param }}"
@@ -26,13 +27,28 @@
   {% else %}
   <span class="rounded border border-gray-200 bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-400 cursor-not-allowed" aria-disabled="true">Next →</span>
   {% endif %}
-  <button type="button"
-          id="timesheet-save-all"
-          class="ml-auto rounded border border-green-600 bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700">
-    Save
-  </button>
+  <span class="ml-auto flex items-center gap-2">
+    {% if timesheet_editable %}
+    <button type="button"
+            class="timesheet-cancel rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            hx-get="{% url 'tracking:timesheet_grid' %}?week={{ week_param }}&editable=0"
+            hx-target="#timesheet-grid-container"
+            hx-swap="innerHTML"
+            hx-trigger="click">Cancel</button>
+    <button type="button"
+            id="timesheet-save-all"
+            class="rounded border border-green-600 bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700">Save</button>
+    {% else %}
+    <button type="button"
+            class="rounded border border-green-600 bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
+            hx-get="{% url 'tracking:timesheet_grid' %}?week={{ week_param }}&editable=1"
+            hx-target="#timesheet-grid-container"
+            hx-swap="innerHTML"
+            hx-trigger="click">Edit</button>
+    {% endif %}
+  </span>
 </nav>
-<div class="overflow-x-auto">
+<div class="overflow-x-auto rounded border border-gray-200 {% if not timesheet_editable %}bg-gray-50{% endif %}">
   <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
     <thead class="bg-gray-50">
       <tr>
@@ -50,7 +66,7 @@
         </td>
         {% for day in week_days %}
         <td class="py-1 px-1" id="cell-{{ day.isoformat }}-{{ row.project_id|default:'' }}-{{ row.task_type_id|default:'' }}">
-          {% include "tracking/_timesheet_cell.html" with date=day project_id=row.project_id task_type_id=row.task_type_id total_seconds=row.day_totals|get_item:day %}
+          {% include "tracking/_timesheet_cell.html" with date=day project_id=row.project_id task_type_id=row.task_type_id total_seconds=row.day_totals|get_item:day timesheet_editable=timesheet_editable %}
         </td>
         {% endfor %}
       </tr>
@@ -61,4 +77,5 @@
       {% endfor %}
     </tbody>
   </table>
+</div>
 </div>

@@ -10,6 +10,7 @@ from tracking.use_cases.get_active_timer import execute as get_active_timer
 
 from .timer_views import start_timer, stop_timer, timer_partial
 from .timesheet_views import (
+    get_week_context_for_user,
     timesheet_grid_partial,
     timesheet_page,
     update_time_entry,
@@ -17,7 +18,7 @@ from .timesheet_views import (
 
 
 def home(request):
-    """Home page with timer UI. Unauthenticated users are redirected to login."""
+    """Home page with timer UI and embedded weekly timesheet."""
     if not request.user.is_authenticated:
         login_url = reverse("login")
         next_url = reverse("tracking:home")
@@ -28,11 +29,16 @@ def home(request):
         user_id=request.user.id,
         is_staff=request.user.is_staff,
     )
-    return render(
-        request,
-        "tracking/home.html",
-        {"active_timer": active_timer, "timer_options": timer_options},
+    week_context = get_week_context_for_user(
+        request.user.id, request.user.is_staff
     )
+    context = {
+        "active_timer": active_timer,
+        "timer_options": timer_options,
+        "timesheet_editable": False,
+        **week_context,
+    }
+    return render(request, "tracking/home.html", context)
 
 __all__ = [
     "home",

@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-gray-100 min-h-screen" data-timesheet-grid-url="{% url 'tracking:timesheet_grid' %}">
     <header class="bg-white shadow-sm border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex items-center justify-between">
             <h1 class="text-xl font-semibold text-gray-800">
@@ -35,8 +35,19 @@
     document.body.addEventListener('click', function(e) {
       if (e.target.id === 'timesheet-save-all') {
         var container = document.getElementById('timesheet-grid-container');
-        if (container) {
-          container.querySelectorAll('form').forEach(function(f) { f.requestSubmit(); });
+        if (!container) return;
+        container.querySelectorAll('form').forEach(function(f) { f.requestSubmit(); });
+        var wrapper = container.querySelector('[data-week]');
+        var week = wrapper ? wrapper.getAttribute('data-week') : '';
+        var baseUrl = document.body.getAttribute('data-timesheet-grid-url') || '';
+        if (baseUrl && week) {
+          var sep = baseUrl.indexOf('?') !== -1 ? '&' : '?';
+          setTimeout(function() {
+            htmx.ajax('get', baseUrl + sep + 'week=' + encodeURIComponent(week) + '&editable=0', {
+              target: '#timesheet-grid-container',
+              swap: 'innerHTML'
+            });
+          }, 1500);
         }
       }
     });

@@ -1,12 +1,16 @@
 {% extends "base.html" %}
+{% load tracking_extras %}
 {% block title %}Home — Time Tracking{% endblock %}
 {% block content %}
 <div class="space-y-6">
   {% if user.is_authenticated %}
   {% include "tracking/_timer_partial.html" with active_timer=active_timer timer_options=timer_options %}
-  <p class="text-sm text-gray-600">
-    <a href="{% url 'tracking:timesheet' %}" class="text-green-600 hover:text-green-800 font-medium">Weekly timesheet</a> — view and edit time by week.
-  </p>
+  <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+    <h2 class="text-lg font-medium text-gray-900 mb-4">Weekly timesheet</h2>
+    <div id="timesheet-grid-container">
+      {% include "tracking/_timesheet_grid.html" with timesheet=timesheet week_days=week_days week_start=week_start prev_week=prev_week next_week=next_week week_param=week_param prev_param=prev_param next_param=next_param prev_enabled=prev_enabled next_enabled=next_enabled timesheet_editable=timesheet_editable %}
+    </div>
+  </div>
   {% endif %}
   <div class="rounded-lg bg-white p-6 shadow">
     <h2 class="text-lg font-medium text-gray-900">Welcome</h2>

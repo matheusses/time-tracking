@@ -11,7 +11,7 @@
     </a>
   </div>
   <div id="timesheet-grid-container">
-    {% include "tracking/_timesheet_grid.html" with timesheet=timesheet week_days=week_days week_start=week_start prev_week=prev_week next_week=next_week week_param=week_param prev_param=prev_param next_param=next_param %}
+    {% include "tracking/_timesheet_grid.html" with timesheet=timesheet week_days=week_days week_start=week_start prev_week=prev_week next_week=next_week week_param=week_param prev_param=prev_param next_param=next_param prev_enabled=prev_enabled next_enabled=next_enabled timesheet_editable=timesheet_editable %}
   </div>
 </div>
 {% endblock %}
