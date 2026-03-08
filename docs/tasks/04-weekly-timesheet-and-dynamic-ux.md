@@ -68,4 +68,4 @@ sequenceDiagram
 - [ ] 2.0 Implement GenerateWeeklyTimesheetUseCase and view for weekly grid; support week parameter for navigation
 - [ ] 3.0 Add HTMX-driven week navigation (previous/next week) with partial updates (no full-page reload)
 - [ ] 4.0 Implement inline editing of time entry values in the grid (HTMX PATCH/PUT or POST with partial response)
-- [ ] 5.0 Support manual entry and update of hours for any day (same use case/service; validation and persistence in domain/service layer)
+- [ ] 5.0 Manual entry and update of hours for any day — see **Task 06 (Manual Entry)** for full checklist (same use case/service; validation and persistence in domain/service layer)

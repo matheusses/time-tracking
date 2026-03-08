@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "project_management",
     "tracking",
 ]
 
@@ -61,8 +62,8 @@ TEMPLATES = [
     },
 ]
 
-# Database: use SQLite for test runs when no Postgres env is set; otherwise PostgreSQL
-if RUNNING_TESTS and not os.environ.get("DATABASE_URL") and not os.environ.get("PGPASSWORD"):
+# Database: use SQLite for test runs unless TEST_USE_POSTGRES=1; otherwise PostgreSQL
+if RUNNING_TESTS and not os.environ.get("TEST_USE_POSTGRES"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",

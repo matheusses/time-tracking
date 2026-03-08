@@ -1,5 +1,7 @@
 # Core Time Tracking — Implementation Task Summary
 
+**Depends on:** Task 02 (Project & Client Management) for Client, Project, and Task Type models and ProjectService.
+
 ## Relevant Files
 
 ### Core Implementation Files
@@ -67,7 +69,9 @@ sequenceDiagram
 
 ## Tasks
 
-- [ ] 1.0 Implement domain models and TimerService (DB access only in service; single active timer per user)
-- [ ] 2.0 Implement StartTimerUseCase and StopTimerUseCase (call TimerService; no direct ORM)
-- [ ] 3.0 Add presentation: views and HTMX endpoints for start/stop timer (no business logic in views)
-- [ ] 4.0 Build timer UI partial(s) with HTMX (start/stop, display active timer); limit full-page reloads for these actions
+- [x] 1.0 Implement domain models and TimerService (DB access only in service; single active timer per user)
+- [x] 2.0 Implement StartTimerUseCase and StopTimerUseCase (call TimerService; no direct ORM)
+- [x] 3.0 Add presentation: views and HTMX endpoints for start/stop timer (no business logic in views)
+- [x] 4.0 Build timer UI partial(s) with HTMX (start/stop, display active timer); limit full-page reloads for these actions
+
+**Note:** Implemented under the `tracking` app (not `core`): `tracking/domain/services/timer_service.py`, `tracking/domain/models/`, `tracking/use_cases/start_timer.py`, `tracking/use_cases/stop_timer.py`, `tracking/application/dtos.py`, `tracking/views/timer_views.py`, `templates/tracking/_timer_partial.html`. Single-timer rule and flow documented in README and ADR.

@@ -4,9 +4,9 @@ A modular monolith time-tracking application built with **Django 5.2+**, **Postg
 
 ## Project overview and purpose
 
-- Track time with an active timer (single running timer per user).
-- View and edit a weekly timesheet.
-- Manage clients and projects (admin).
+- **Track time** with an active timer (single running timer per user). Start/stop from the home page via HTMX; optional project and task-type dropdowns (scoped by user's client).
+- View and edit a weekly timesheet (planned).
+- **Project & client management** (see below): clients, projects, and task types live in the `project_management` app. Admin manages them and assigns each user to a client; non-admin users only see options for their client.
 
 The codebase follows clean layering: views call use cases, use cases call domain services, and only domain services use the Django ORM.
 
@@ -37,6 +37,8 @@ The codebase follows clean layering: views call use cases, use cases call domain
    pip install -r requirements.txt
    ```
 
+   **Important:** Always activate the venv before running `manage.py` or using the project. If you use **pyenv**, the repo includes a `.python-version` (3.11.11) so `python` in this directory uses that version; the venv still needs to be activated (or use `.venv/bin/python`). In **Cursor/VS Code**, set the Python interpreter to `.venv/bin/python` so Run/Debug and the terminal use the venv (Command Palette → "Python: Select Interpreter").
+
 3. **Configure environment**
 
    ```bash
@@ -56,6 +58,36 @@ The codebase follows clean layering: views call use cases, use cases call domain
    ```bash
    python manage.py createsuperuser
    ```
+
+---
+
+## Troubleshooting
+
+- **"Couldn't import Django" / `ModuleNotFoundError: No module named 'django'`**  
+  The interpreter running the code is not the project’s virtual environment. Fix: activate the venv (`source .venv/bin/activate`) in the terminal, or in Cursor/VS Code choose **Python: Select Interpreter** and pick `.venv/bin/python`.
+
+- **`OperationalError: password authentication failed for user "postgres"`**  
+  The password in `.env` does not match the one PostgreSQL expects.  
+  - **Using Docker for Postgres:** Start the DB with `docker compose up -d db` (or `docker compose -f docker-compose-debug.yml up -d db`). Ensure `.env` has `PGPASSWORD=postgres` (or the same value you used when the volume was first created). If you changed the password after creating the volume, either use the original password in `.env` or recreate the volume: `docker compose down -v` then `docker compose up -d db`.  
+  - **Using a local PostgreSQL:** Set in `.env` the same password the `postgres` user has (e.g. `DATABASE_URL=postgresql://postgres:YOUR_ACTUAL_PASSWORD@localhost:5432/timetracking` or `PGPASSWORD=YOUR_ACTUAL_PASSWORD`). To change the DB user password: `psql -U postgres -c "ALTER USER postgres PASSWORD 'postgres';"` (or your chosen password).
+
+---
+
+## Core time tracking (single-timer rule)
+
+- **One active timer per user**: starting a new timer automatically stops any existing running timer for that user.
+- **Flow**: User clicks "Start timer" → view calls `StartTimerUseCase` → `TimerService` stops any active timer, then creates a new `TimeEntry` with `ended_at=None`. User clicks "Stop" → `StopTimerUseCase` → `TimerService` sets `ended_at=now()` and returns duration.
+- **Layers**: Views (HTMX) → use cases → `TimerService` → Django ORM. All DB access for timers is in `tracking.domain.services.timer_service.TimerService`.
+
+---
+
+## Project & client management
+
+- **Hierarchy**: Client → Project. Task types are global (e.g. Design, Development, Meeting). Implemented in the **project_management** app.
+- **Admin**: Full CRUD on Client, Project, and Task Type in Django Admin. Each user can be associated with one client via the User edit form (UserProfile inline); admin assigns this.
+- **Non-admin**: No CRUD on clients/projects. Timer and timesheet dropdowns (project, task type) are **read-only** and scoped by the user's associated client (staff see all).
+- **Layers**: Options for the timer come from `project_management.use_cases.get_timer_options` → `ProjectService`; views do not use the ORM directly.
+- **Security**: Client/Project/Task Type CRUD is admin-only. Non-admin users cannot access management UIs or APIs; they only receive scoped read-only options for the timer/timesheet.
 
 ---
 
@@ -117,7 +149,7 @@ The codebase follows clean layering: views call use cases, use cases call domain
 
 When `DATABASE_URL` and `PGPASSWORD` are not set, tests use an in-memory SQLite database so they run without a local PostgreSQL instance. With Postgres env set, tests use PostgreSQL.
 
-Tests should be added for any new or modified code (unit at minimum; integration when touching DB/APIs/auth). See [docs/tasks/05-tests.md](docs/tasks/05-tests.md).
+Tests should be added for any new or modified code (unit at minimum; integration when touching DB/APIs/auth). Run all tests with `python manage.py test` (covers `tracking` and `project_management`). See [docs/tasks/07-tests.md](docs/tasks/07-tests.md).
 
 ---
 

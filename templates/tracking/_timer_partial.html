@@ -1,0 +1,52 @@
+{# Timer UI partial: start/stop and active timer display. Used by HTMX for swaps. #}
+<div id="timer-widget" class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+  {% if message %}
+  <p class="mb-2 text-sm text-gray-600">{{ message }}</p>
+  {% endif %}
+  {% if active_timer %}
+  <div class="flex flex-wrap items-center gap-3">
+    <div class="flex-1 min-w-0">
+      <p class="text-sm font-medium text-gray-900">Running</p>
+      <p class="text-xs text-gray-500">
+        {% if active_timer.project_name %}{{ active_timer.project_name }}{% if active_timer.task_type_name %} · {{ active_timer.task_type_name }}{% endif %}{% else %}No project{% endif %}
+        — started {{ active_timer.started_at|time }}
+      </p>
+    </div>
+    <form method="post" action="{% url 'tracking:timer_stop' %}" class="inline" id="timer-stop-form"
+          hx-post="{% url 'tracking:timer_stop' %}"
+          hx-target="#timer-widget"
+          hx-swap="outerHTML"
+          hx-trigger="submit">
+      {% csrf_token %}
+      <button type="submit" class="rounded bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+        Stop
+      </button>
+    </form>
+  </div>
+  {% else %}
+  <form method="post" action="{% url 'tracking:timer_start' %}" class="flex flex-wrap items-center gap-2" id="timer-start-form"
+        hx-post="{% url 'tracking:timer_start' %}"
+        hx-target="#timer-widget"
+        hx-swap="outerHTML"
+        hx-trigger="submit">
+    {% csrf_token %}
+    {% if timer_options %}
+    <select name="project_id" id="timer-project" class="rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-green-500 focus:ring-1 focus:ring-green-500" aria-label="Project">
+      <option value="">No project</option>
+      {% for p in timer_options.projects %}
+      <option value="{{ p.id }}">{{ p.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="task_type_id" id="timer-task-type" class="rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-green-500 focus:ring-1 focus:ring-green-500" aria-label="Task type">
+      <option value="">No task type</option>
+      {% for t in timer_options.task_types %}
+      <option value="{{ t.id }}">{{ t.name }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+    <button type="submit" class="rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+      Start timer
+    </button>
+  </form>
+  {% endif %}
+</div>
