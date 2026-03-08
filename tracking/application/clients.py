@@ -13,13 +13,12 @@ from tracking.application.dtos import (
     UpdateTimeEntryInputDTO,
     WeeklyTimesheetDTO,
     TimeEntrySummaryDTO,
+    validate_time_entry_summary_dto,
+    validate_timesheet_row_dto,
+    validate_weekly_timesheet_dto,
 )
 from tracking.domain.models import ActiveTimerState, TimerResult
-from project_management.domain.repositories import (
-    ProjectRepositoryProtocol,
-    TaskTypeRepositoryProtocol,
-)
-from tracking.domain.repositories import TimeEntryRepositoryProtocol
+from tracking.domain.repositories import TimeEntryRepositoryProtocol, TimerActionRepositoryProtocol
 from tracking.domain.services.timer_service import TimerService
 from tracking.domain.services.timesheet_service import TimesheetService
 
@@ -72,17 +71,17 @@ class TrackClient:
     def __init__(
         self,
         time_entry_repository: TimeEntryRepositoryProtocol,
-        project_repository: ProjectRepositoryProtocol,
-        task_type_repository: TaskTypeRepositoryProtocol,
+        timer_action_repository: TimerActionRepositoryProtocol,
         project_management_client: "ProjectManagementClientInterface",
     ) -> None:
         self._timer_service = TimerService(
             time_entry_repository=time_entry_repository,
+            timer_action_repository=timer_action_repository,
+            project_task_type_validator=project_management_client,
         )
         self._timesheet_service = TimesheetService(
             time_entry_repository=time_entry_repository,
-            project_repository=project_repository,
-            task_type_repository=task_type_repository,
+            project_task_type_validator=project_management_client,
         )
         self._project_management_client = project_management_client
 
@@ -124,16 +123,19 @@ class TrackClient:
                 for (pid, tid), (pname, tname, day_totals) in sorted(data_by_key.items())
             ]
 
-        rows = [
-            TimesheetRowDTO(
-                project_id=pid,
-                task_type_id=tid,
-                project_name=pname,
-                task_type_name=tname,
-                day_totals=day_totals,
+        rows = []
+        for (pid, tid, pname, tname, day_totals) in rows_data:
+            validate_timesheet_row_dto(pid, tid, pname, tname, day_totals)
+            rows.append(
+                TimesheetRowDTO(
+                    project_id=pid,
+                    task_type_id=tid,
+                    project_name=pname,
+                    task_type_name=tname,
+                    day_totals=day_totals,
+                )
             )
-            for (pid, tid, pname, tname, day_totals) in rows_data
-        ]
+        validate_weekly_timesheet_dto(week_start_result, rows)
         return WeeklyTimesheetDTO(week_start=week_start_result, rows=rows)
 
     def get_active_timer(self, user_id: int) -> Optional[ActiveTimerState]:

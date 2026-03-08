@@ -43,12 +43,12 @@ class TimeEntryRepositoryProtocol(Protocol):
     def create(
         self,
         user_id: int,
-        project_id: Optional[int],
-        task_type_id: Optional[int],
+        project_id: int,
+        task_type_id: int,
         started_at: datetime,
         ended_at: Optional[datetime] = None,
     ) -> ActiveTimerState:
-        """Create a new time entry. Returns active state DTO with names resolved."""
+        """Create a new time entry (project and task_type required). Returns active state DTO."""
         ...
 
     def get_active(self, user_id: int) -> Optional[ActiveTimerState]:

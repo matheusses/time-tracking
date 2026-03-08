@@ -91,3 +91,27 @@ class TimeEntrySummaryDTO:
     task_type_id: Optional[int]
     entry_date: date
     manual_duration_seconds: int
+
+
+# --- DTO validators (no-op or minimal checks; used when building DTOs in clients) ---
+
+
+def validate_time_entry_summary_dto(dto: TimeEntrySummaryDTO) -> None:
+    """Validate TimeEntrySummaryDTO structure. No-op for now."""
+    assert dto.id >= 0 and dto.manual_duration_seconds >= 0
+
+
+def validate_timesheet_row_dto(
+    project_id: Optional[int],
+    task_type_id: Optional[int],
+    project_name: Optional[str],
+    task_type_name: Optional[str],
+    day_totals: dict,
+) -> None:
+    """Validate row data for TimesheetRowDTO. No-op for now."""
+    assert isinstance(day_totals, dict)
+
+
+def validate_weekly_timesheet_dto(week_start: date, rows: list) -> None:
+    """Validate WeeklyTimesheetDTO structure. No-op for now."""
+    assert isinstance(rows, list)

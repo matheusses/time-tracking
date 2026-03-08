@@ -102,7 +102,17 @@ class UserDataIsolationIntegrationTests(TestCase):
 
     def test_timer_start_creates_entry_for_logged_in_user_only(self):
         self.client.force_login(self.user_a)
-        self.client.post(reverse("tracking:timer_start"), {})
+        self.client.get(reverse("tracking:home"))  # CSRF cookie
+        csrf = self.client.cookies.get("csrftoken")
+        project = project_factory()
+        task_type = task_type_factory()
+        post_data = {
+            "project_id": str(project.id),
+            "task_type_id": str(task_type.id),
+        }
+        if csrf:
+            post_data["csrfmiddlewaretoken"] = csrf.value
+        self.client.post(reverse("tracking:timer_start"), post_data)
         from tracking.models import TimeEntry
         self.assertEqual(
             TimeEntry.objects.filter(user=self.user_a, ended_at__isnull=True).count(), 1

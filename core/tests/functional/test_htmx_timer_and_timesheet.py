@@ -24,7 +24,12 @@ class HTMXTimerFunctionalTests(TestCase):
         self.client.force_login(self.user)
         self.client.get(reverse("tracking:home"))  # get CSRF cookie
         csrf = self.client.cookies.get("csrftoken")
-        post_data = {}
+        project = project_factory()
+        task_type = task_type_factory()
+        post_data = {
+            "project_id": str(project.id),
+            "task_type_id": str(task_type.id),
+        }
         if csrf:
             post_data["csrfmiddlewaretoken"] = csrf.value
         response = self.client.post(reverse("tracking:timer_start"), post_data)
@@ -38,10 +43,15 @@ class HTMXTimerFunctionalTests(TestCase):
         self.client.force_login(self.user)
         self.client.get(reverse("tracking:home"))
         csrf = self.client.cookies.get("csrftoken")
-        # Start first
-        post_data = {}
+        project = project_factory()
+        task_type = task_type_factory()
+        post_data = {
+            "project_id": str(project.id),
+            "task_type_id": str(task_type.id),
+        }
         if csrf:
             post_data["csrfmiddlewaretoken"] = csrf.value
+        # Start first
         self.client.post(reverse("tracking:timer_start"), post_data)
         response = self.client.post(reverse("tracking:timer_stop"), post_data)
         self.assertEqual(response.status_code, 200)

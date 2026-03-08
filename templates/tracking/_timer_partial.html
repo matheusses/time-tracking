@@ -1,7 +1,7 @@
 {# Timer UI partial: start/stop and active timer display. Used by HTMX for swaps. #}
 <div id="timer-widget" class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
   {% if message %}
-  <p class="mb-2 text-sm text-gray-600">{{ message }}</p>
+  <p class="mb-2 text-sm {% if message_is_error %}text-red-600{% else %}text-gray-600{% endif %}">{{ message }}</p>
   {% endif %}
   {% if active_timer %}
   <div class="flex flex-wrap items-center gap-3">

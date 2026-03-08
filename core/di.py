@@ -17,8 +17,8 @@ from project_management.infrastructure.repositories import (
     TaskTypeRepository,
     UserProfileRepository,
 )
-from tracking.domain.repositories import TimeEntryRepositoryProtocol
-from tracking.infrastructure.repositories import TimeEntryRepository
+from tracking.domain.repositories import TimeEntryRepositoryProtocol, TimerActionRepositoryProtocol
+from tracking.infrastructure.repositories import TimeEntryRepository, TimerActionRepository
 
 
 class DI:
@@ -29,6 +29,7 @@ class DI:
 
     def __init__(self) -> None:
         self._time_entry_repository: Optional[TimeEntryRepositoryProtocol] = None
+        self._timer_action_repository: Optional[TimerActionRepositoryProtocol] = None
         self._project_repository: Optional[ProjectRepositoryProtocol] = None
         self._task_type_repository: Optional[TaskTypeRepositoryProtocol] = None
         self._client_repository: Optional[ClientRepositoryProtocol] = None
@@ -41,6 +42,12 @@ class DI:
         if self._time_entry_repository is None:
             self._time_entry_repository = TimeEntryRepository()
         return self._time_entry_repository
+
+    def get_timer_action_repository(self) -> TimerActionRepositoryProtocol:
+        """Return the TimerAction repository implementation (insert-only)."""
+        if self._timer_action_repository is None:
+            self._timer_action_repository = TimerActionRepository()
+        return self._timer_action_repository
 
     def get_project_repository(self) -> ProjectRepositoryProtocol:
         """Return the Project repository implementation."""
@@ -73,8 +80,7 @@ class DI:
 
             self._track_client = TrackClient(
                 time_entry_repository=self.get_time_entry_repository(),
-                project_repository=self.get_project_repository(),
-                task_type_repository=self.get_task_type_repository(),
+                timer_action_repository=self.get_timer_action_repository(),
                 project_management_client=self.get_project_management_client(),
             )
         return self._track_client

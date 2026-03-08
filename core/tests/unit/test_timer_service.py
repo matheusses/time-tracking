@@ -12,19 +12,32 @@ from core.tests.factories import (
     task_type_factory,
     user_factory,
 )
-from tracking.domain.services.timer_service import TimerService
+from tracking.domain.services.timer_service import TimerService, TimerValidationError
 from tracking.models import TimeEntry
 
 
+def _start_with_project_task(service, user_id, project, task_type):
+    """Helper: start timer with required project and task type."""
+    return service.start(
+        user_id,
+        project_id=project.id,
+        task_type_id=task_type.id,
+    )
+
+
 class TimerServiceStartTests(TestCase):
-    """Test TimerService.start(): single active timer, stop-before-start."""
+    """Test TimerService.start(): single active timer, stop-before-start. project_id and task_type_id required."""
 
     def setUp(self):
         self.service = TimerService()
         self.user = user_factory()
+        self.project = project_factory(name="Test Project")
+        self.task_type = task_type_factory(name="Development")
 
     def test_start_creates_active_entry(self):
-        result = self.service.start(self.user.id)
+        result = _start_with_project_task(
+            self.service, self.user.id, self.project, self.task_type
+        )
         self.assertTrue(result.success)
         self.assertIsNotNone(result.active_timer)
         self.assertEqual(
@@ -32,8 +45,12 @@ class TimerServiceStartTests(TestCase):
         )
 
     def test_start_stops_existing_active_timer(self):
-        self.service.start(self.user.id)
-        self.service.start(self.user.id)
+        _start_with_project_task(
+            self.service, self.user.id, self.project, self.task_type
+        )
+        _start_with_project_task(
+            self.service, self.user.id, self.project, self.task_type
+        )
         active_count = TimeEntry.objects.filter(
             user=self.user, ended_at__isnull=True
         ).count()
@@ -42,30 +59,30 @@ class TimerServiceStartTests(TestCase):
         self.assertEqual(completed.count(), 1)
 
     def test_start_with_optional_project_and_task_type(self):
-        project = project_factory(name="Test Project")
-        task_type = task_type_factory(name="Development")
-        result = self.service.start(
-            self.user.id,
-            project_id=project.id,
-            task_type_id=task_type.id,
+        result = _start_with_project_task(
+            self.service, self.user.id, self.project, self.task_type
         )
         self.assertTrue(result.success)
         entry = TimeEntry.objects.get(user=self.user, ended_at__isnull=True)
-        self.assertEqual(entry.project_id, project.id)
-        self.assertEqual(entry.task_type_id, task_type.id)
+        self.assertEqual(entry.project_id, self.project.id)
+        self.assertEqual(entry.task_type_id, self.task_type.id)
 
-    def test_start_without_project_or_task_type(self):
-        result = self.service.start(self.user.id)
-        self.assertTrue(result.success)
-        entry = TimeEntry.objects.get(user=self.user, ended_at__isnull=True)
-        self.assertIsNone(entry.project_id)
-        self.assertIsNone(entry.task_type_id)
+    def test_start_without_project_or_task_type_raises_validation_error(self):
+        with self.assertRaises(TimerValidationError) as cm:
+            self.service.start(self.user.id)
+        self.assertIn("Project is required", cm.exception.message)
 
     def test_single_active_timer_per_user_only_one_running_at_a_time(self):
         """Enforce single-timer rule: after multiple starts, exactly one entry has ended_at=None."""
-        self.service.start(self.user.id)
-        self.service.start(self.user.id)
-        self.service.start(self.user.id)
+        _start_with_project_task(
+            self.service, self.user.id, self.project, self.task_type
+        )
+        _start_with_project_task(
+            self.service, self.user.id, self.project, self.task_type
+        )
+        _start_with_project_task(
+            self.service, self.user.id, self.project, self.task_type
+        )
         active_count = TimeEntry.objects.filter(
             user=self.user, ended_at__isnull=True
         ).count()
@@ -82,6 +99,8 @@ class TimerServiceStopTests(TestCase):
     def setUp(self):
         self.service = TimerService()
         self.user = user_factory()
+        self.project = project_factory(name="Test Project")
+        self.task_type = task_type_factory(name="Development")
 
     def test_stop_with_no_active_timer_returns_failure(self):
         result = self.service.stop(self.user.id)
@@ -89,7 +108,9 @@ class TimerServiceStopTests(TestCase):
         self.assertIn("No active timer", result.message)
 
     def test_stop_sets_ended_at_and_returns_duration(self):
-        self.service.start(self.user.id)
+        _start_with_project_task(
+            self.service, self.user.id, self.project, self.task_type
+        )
         entry = TimeEntry.objects.get(user=self.user, ended_at__isnull=True)
         start = entry.started_at
         end = start + timedelta(seconds=3600)
@@ -106,7 +127,9 @@ class TimerServiceStopTests(TestCase):
         self.assertIsNone(self.service.get_active_timer(self.user.id))
 
     def test_get_active_timer_returns_state_when_running(self):
-        self.service.start(self.user.id)
+        _start_with_project_task(
+            self.service, self.user.id, self.project, self.task_type
+        )
         active = self.service.get_active_timer(self.user.id)
         self.assertIsNotNone(active)
         self.assertIsNotNone(active.entry_id)
@@ -116,16 +139,12 @@ class TimerServiceStopTests(TestCase):
         )
 
     def test_get_active_timer_includes_project_and_task_type_names_when_set(self):
-        project = project_factory(name="My Project")
-        task_type = task_type_factory(name="Development")
-        self.service.start(
-            self.user.id,
-            project_id=project.id,
-            task_type_id=task_type.id,
+        _start_with_project_task(
+            self.service, self.user.id, self.project, self.task_type
         )
         active = self.service.get_active_timer(self.user.id)
         self.assertIsNotNone(active)
-        self.assertEqual(active.project_id, project.id)
-        self.assertEqual(active.project_name, "My Project")
-        self.assertEqual(active.task_type_id, task_type.id)
+        self.assertEqual(active.project_id, self.project.id)
+        self.assertEqual(active.project_name, "Test Project")
+        self.assertEqual(active.task_type_id, self.task_type.id)
         self.assertEqual(active.task_type_name, "Development")

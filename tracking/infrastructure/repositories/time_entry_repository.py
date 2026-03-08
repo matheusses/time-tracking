@@ -45,15 +45,15 @@ class TimeEntryRepository(TimeEntryRepositoryProtocol):
     def create(
         self,
         user_id: int,
-        project_id: int | None,
-        task_type_id: int | None,
+        project_id: int,
+        task_type_id: int,
         started_at,
         ended_at=None,
     ) -> ActiveTimerState:
         entry = TimeEntry.objects.create(
             user_id=user_id,
-            project_id=project_id or None,
-            task_type_id=task_type_id or None,
+            project_id=project_id,
+            task_type_id=task_type_id,
             started_at=started_at,
             ended_at=ended_at,
         )

@@ -90,3 +90,11 @@ class ProjectService:
     def list_task_types(self) -> List[TaskTypeRow]:
         """List all task types (as rows: id, name). Task types are global."""
         return self._task_type_repo.list_all()
+
+    def project_exists(self, project_id: int) -> bool:
+        """Return True if a project with the given id exists."""
+        return self._project_repo.exists(project_id)
+
+    def task_type_exists(self, task_type_id: int) -> bool:
+        """Return True if a task type with the given id exists."""
+        return self._task_type_repo.exists(task_type_id)

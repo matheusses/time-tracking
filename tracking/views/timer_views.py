@@ -6,6 +6,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
 from tracking.application.dtos import StartTimerInputDTO, StopTimerInputDTO
+from tracking.domain.services.timer_service import TimerValidationError
 from tracking.views._clients import pm_client, track_client
 
 TIMER_PARTIAL = "tracking/_timer_partial.html"
@@ -47,7 +48,23 @@ def start_timer(request: HttpRequest) -> HttpResponse:
         project_id=project_id,
         task_type_id=task_type_id,
     )
-    result = track_client.start_timer(dto)
+    try:
+        result = track_client.start_timer(dto)
+    except TimerValidationError as e:
+        timer_options = pm_client.get_timer_options(
+            user_id=request.user.id,
+            is_staff=request.user.is_staff,
+        )
+        return render(
+            request,
+            TIMER_PARTIAL,
+            {
+                "active_timer": track_client.get_active_timer(request.user.id),
+                "message": e.message,
+                "message_is_error": True,
+                "timer_options": timer_options,
+            },
+        )
     timer_options = pm_client.get_timer_options(
         user_id=request.user.id,
         is_staff=request.user.is_staff,

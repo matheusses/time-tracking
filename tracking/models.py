@@ -22,16 +22,12 @@ class TimeEntry(models.Model):
     )
     project = models.ForeignKey(
         Project,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.PROTECT,
         related_name="time_entries",
     )
     task_type = models.ForeignKey(
         TaskType,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.PROTECT,
         related_name="time_entries",
     )
     started_at = models.DateTimeField()
@@ -59,3 +55,52 @@ class TimeEntry(models.Model):
             return None
         delta = self.ended_at - self.started_at
         return int(delta.total_seconds())
+
+
+class TimerAction(models.Model):
+    """
+    Event-sourced log of timer start/stop actions. Append-only: insert only;
+    never update or delete from application code.
+    One row per start or stop event.
+    """
+
+    class Action(models.TextChoices):
+        START = "start", "Start"
+        STOP = "stop", "Stop"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="timer_actions",
+    )
+    action = models.CharField(max_length=10, choices=Action.choices)
+    occurred_at = models.DateTimeField()
+    time_entry = models.ForeignKey(
+        TimeEntry,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="timer_actions",
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="timer_actions",
+    )
+    task_type = models.ForeignKey(
+        TaskType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="timer_actions",
+    )
+
+    class Meta:
+        ordering = ["-occurred_at"]
+        verbose_name = "Timer action"
+        verbose_name_plural = "Timer actions"
+
+    def __str__(self):
+        return f"{self.user_id} {self.action} @ {self.occurred_at}"

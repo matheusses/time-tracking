@@ -143,15 +143,30 @@ class TimesheetServiceAggregationTests(TestCase):
         self.assertEqual(day_totals[Monday], 3600)
 
 
+class _Validator:
+    """Minimal validator for tests: only given project/task_type ids are valid."""
+
+    def __init__(self, project_id: int, task_type_id: int):
+        self._project_id = project_id
+        self._task_type_id = task_type_id
+
+    def project_exists(self, project_id: int) -> bool:
+        return project_id == self._project_id
+
+    def task_type_exists(self, task_type_id: int) -> bool:
+        return task_type_id == self._task_type_id
+
+
 class TimesheetServiceUpdateOrCreateTests(TestCase):
     """Test update_or_create_entry: get-or-create for manual entry, validation."""
 
     def setUp(self):
-        self.service = TimesheetService()
         self.user = user_factory()
         self.entry_date = date(2025, 3, 5)
         self.project = project_factory()
         self.task = task_type_factory()
+        validator = _Validator(self.project.id, self.task.id)
+        self.service = TimesheetService(project_task_type_validator=validator)
 
     def test_creates_manual_entry_when_none(self):
         summary = self.service.update_or_create_entry(

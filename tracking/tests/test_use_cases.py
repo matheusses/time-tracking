@@ -9,34 +9,51 @@ from tracking.tests.factories import UserFactory
 
 class StartTimerClientTests(TestCase):
     def setUp(self):
+        from tracking.tests.factories import ProjectFactory, TaskTypeFactory
         self.user = UserFactory()
         self.client = get_track_client()
+        self.project = ProjectFactory(name="P")
+        self.task_type = TaskTypeFactory(name="T")
 
     def test_start_timer_starts_timer(self):
-        dto = StartTimerInputDTO(user_id=self.user.id)
+        dto = StartTimerInputDTO(
+            user_id=self.user.id,
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+        )
         result = self.client.start_timer(dto)
         self.assertTrue(result.success)
         self.assertEqual(TimeEntry.objects.filter(user=self.user, ended_at__isnull=True).count(), 1)
 
     def test_start_timer_with_project_and_task_type(self):
-        from tracking.tests.factories import ProjectFactory, TaskTypeFactory
-        project = ProjectFactory(name="P")
-        task_type = TaskTypeFactory(name="T")
-        dto = StartTimerInputDTO(user_id=self.user.id, project_id=project.id, task_type_id=task_type.id)
+        dto = StartTimerInputDTO(
+            user_id=self.user.id,
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+        )
         result = self.client.start_timer(dto)
         self.assertTrue(result.success)
         entry = TimeEntry.objects.get(user=self.user, ended_at__isnull=True)
-        self.assertEqual(entry.project_id, project.id)
-        self.assertEqual(entry.task_type_id, task_type.id)
+        self.assertEqual(entry.project_id, self.project.id)
+        self.assertEqual(entry.task_type_id, self.task_type.id)
 
 
 class StopTimerClientTests(TestCase):
     def setUp(self):
+        from tracking.tests.factories import ProjectFactory, TaskTypeFactory
         self.user = UserFactory()
         self.client = get_track_client()
+        self.project = ProjectFactory(name="P")
+        self.task_type = TaskTypeFactory(name="T")
 
     def test_stop_timer_stops_active_timer(self):
-        self.client.start_timer(StartTimerInputDTO(user_id=self.user.id))
+        self.client.start_timer(
+            StartTimerInputDTO(
+                user_id=self.user.id,
+                project_id=self.project.id,
+                task_type_id=self.task_type.id,
+            )
+        )
         dto = StopTimerInputDTO(user_id=self.user.id)
         result = self.client.stop_timer(dto)
         self.assertTrue(result.success)

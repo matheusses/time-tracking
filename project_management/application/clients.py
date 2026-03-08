@@ -48,6 +48,14 @@ class ProjectManagementClientInterface(Protocol):
         """Return all task type options."""
         ...
 
+    def project_exists(self, project_id: int) -> bool:
+        """Return True if a project with the given id exists. Used by downstream modules for validation."""
+        ...
+
+    def task_type_exists(self, task_type_id: int) -> bool:
+        """Return True if a task type with the given id exists. Used by downstream modules for validation."""
+        ...
+
 
 class ProjectManagementClient:
     """
@@ -109,3 +117,11 @@ class ProjectManagementClient:
         """Return all task type options."""
         rows = self._project_service.list_task_types()
         return [TaskTypeOptionDTO(id=r[0], name=r[1]) for r in rows]
+
+    def project_exists(self, project_id: int) -> bool:
+        """Return True if a project with the given id exists. Used by downstream modules for validation."""
+        return self._project_service.project_exists(project_id)
+
+    def task_type_exists(self, task_type_id: int) -> bool:
+        """Return True if a task type with the given id exists. Used by downstream modules for validation."""
+        return self._project_service.task_type_exists(task_type_id)

@@ -23,14 +23,24 @@ from tracking.models import TimeEntry
 
 
 class StartTimerUseCaseTests(TestCase):
-    """Test TrackClient.start_timer: input DTO, result DTO, delegation to TimerService."""
+    """Test TrackClient.start_timer: input DTO, result DTO, delegation to TimerService. project_id and task_type_id required."""
 
     def setUp(self):
         self.user = user_factory()
         self.client = get_track_client()
+        self.project = project_factory(name="P")
+        self.task_type = task_type_factory(name="T")
+
+    def _start_dto(self, **kwargs):
+        return StartTimerInputDTO(
+            user_id=self.user.id,
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            **kwargs,
+        )
 
     def test_start_timer_accepts_dto_returns_timer_result(self):
-        dto = StartTimerInputDTO(user_id=self.user.id)
+        dto = self._start_dto()
         result = self.client.start_timer(dto)
         self.assertTrue(result.success)
         self.assertIn("started", result.message.lower())
@@ -40,22 +50,16 @@ class StartTimerUseCaseTests(TestCase):
         )
 
     def test_start_timer_with_project_and_task_type_in_dto(self):
-        project = project_factory(name="P")
-        task_type = task_type_factory(name="T")
-        dto = StartTimerInputDTO(
-            user_id=self.user.id,
-            project_id=project.id,
-            task_type_id=task_type.id,
-        )
+        dto = self._start_dto()
         result = self.client.start_timer(dto)
         self.assertTrue(result.success)
         entry = TimeEntry.objects.get(user=self.user, ended_at__isnull=True)
-        self.assertEqual(entry.project_id, project.id)
-        self.assertEqual(entry.task_type_id, task_type.id)
+        self.assertEqual(entry.project_id, self.project.id)
+        self.assertEqual(entry.task_type_id, self.task_type.id)
 
     def test_start_timer_stops_existing_active_before_creating_new(self):
-        self.client.start_timer(StartTimerInputDTO(user_id=self.user.id))
-        self.client.start_timer(StartTimerInputDTO(user_id=self.user.id))
+        self.client.start_timer(self._start_dto())
+        self.client.start_timer(self._start_dto())
         self.assertEqual(
             TimeEntry.objects.filter(user=self.user, ended_at__isnull=True).count(), 1
         )
@@ -70,9 +74,18 @@ class StopTimerUseCaseTests(TestCase):
     def setUp(self):
         self.user = user_factory()
         self.client = get_track_client()
+        self.project = project_factory(name="P")
+        self.task_type = task_type_factory(name="T")
+
+    def _start_dto(self):
+        return StartTimerInputDTO(
+            user_id=self.user.id,
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+        )
 
     def test_stop_timer_stops_active_and_returns_success(self):
-        self.client.start_timer(StartTimerInputDTO(user_id=self.user.id))
+        self.client.start_timer(self._start_dto())
         dto = StopTimerInputDTO(user_id=self.user.id)
         result = self.client.stop_timer(dto)
         self.assertTrue(result.success)

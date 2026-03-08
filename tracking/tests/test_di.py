@@ -39,9 +39,18 @@ class DITests(TestCase):
         self.assertFalse(client.has_entries_in_week(user.id, week_start))
 
     def test_track_client_start_and_stop_flow(self):
+        from tracking.tests.factories import ProjectFactory, TaskTypeFactory
         user = UserFactory()
+        project = ProjectFactory(name="P")
+        task_type = TaskTypeFactory(name="T")
         client = get_track_client()
-        result = client.start_timer(StartTimerInputDTO(user_id=user.id))
+        result = client.start_timer(
+            StartTimerInputDTO(
+                user_id=user.id,
+                project_id=project.id,
+                task_type_id=task_type.id,
+            )
+        )
         self.assertTrue(result.success)
         self.assertIsNotNone(result.active_timer)
         result2 = client.stop_timer(StopTimerInputDTO(user_id=user.id))

@@ -1,6 +1,7 @@
 """
 TimesheetService: weekly aggregation and update/create of time entries.
-DTO in, DTO/domain out. All persistence via repositories (no ORM in service).
+DTO in, DTO/domain out. All persistence via TimeEntryRepository (no ORM in service).
+Validation of project/task_type uses the upstream client contract (no cross-module repository calls).
 """
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -10,15 +11,8 @@ from django.utils import timezone
 
 from tracking.domain.repositories import TimeEntryRepositoryProtocol
 from tracking.domain.repositories.time_entry import TimeEntrySummary
+from tracking.domain.services.timer_service import ProjectTaskTypeValidatorProtocol
 from tracking.infrastructure.repositories import TimeEntryRepository
-from project_management.domain.repositories import (
-    ProjectRepositoryProtocol,
-    TaskTypeRepositoryProtocol,
-)
-from project_management.infrastructure.repositories import (
-    ProjectRepository,
-    TaskTypeRepository,
-)
 
 
 class TimesheetValidationError(ValueError):
@@ -37,25 +31,19 @@ def _days_in_week(week_start: date) -> list[date]:
 class TimesheetService:
     """
     Domain service for weekly timesheet aggregation and manual entry updates.
-    Depends on TimeEntryRepository and Project/TaskType repositories for persistence.
-    Returns plain data or domain types (no ORM).
+    Depends on TimeEntryRepository and optionally a client implementing
+    ProjectTaskTypeValidatorProtocol for validation. Does not depend on other modules' repositories.
     """
 
     def __init__(
         self,
         time_entry_repository: Optional[TimeEntryRepositoryProtocol] = None,
-        project_repository: Optional[ProjectRepositoryProtocol] = None,
-        task_type_repository: Optional[TaskTypeRepositoryProtocol] = None,
+        project_task_type_validator: Optional[ProjectTaskTypeValidatorProtocol] = None,
     ):
         self._time_entry_repo = (
             time_entry_repository if time_entry_repository is not None else TimeEntryRepository()
         )
-        self._project_repo = (
-            project_repository if project_repository is not None else ProjectRepository()
-        )
-        self._task_type_repo = (
-            task_type_repository if task_type_repository is not None else TaskTypeRepository()
-        )
+        self._validator = project_task_type_validator
 
     def get_weekly_aggregation(
         self,
@@ -118,10 +106,15 @@ class TimesheetService:
         """
         if hours < 0:
             raise TimesheetValidationError("Hours must be non-negative.", code="invalid_hours")
-        if project_id is not None and not self._project_repo.exists(project_id):
-            raise TimesheetValidationError("Invalid project.", code="invalid_project")
-        if task_type_id is not None and not self._task_type_repo.exists(task_type_id):
-            raise TimesheetValidationError("Invalid task type.", code="invalid_task_type")
+        if project_id is None:
+            raise TimesheetValidationError("Project is required.", code="missing_project")
+        if task_type_id is None:
+            raise TimesheetValidationError("Task type is required.", code="missing_task_type")
+        if self._validator is not None:
+            if not self._validator.project_exists(project_id):
+                raise TimesheetValidationError("Invalid project.", code="invalid_project")
+            if not self._validator.task_type_exists(task_type_id):
+                raise TimesheetValidationError("Invalid task type.", code="invalid_task_type")
 
         duration_seconds = max(0, int(round(hours * 3600)))
         tz = timezone.get_current_timezone()
