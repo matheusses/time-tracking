@@ -53,6 +53,19 @@ The codebase follows clean layering: views call use cases, use cases call domain
    python manage.py migrate
    ```
 
+   Migration `project_management/0002_seed_initial_data` runs automatically and seeds the following initial data (all operations are idempotent — safe to run multiple times):
+
+   | Entity | Details |
+   |--------|---------|
+   | **Client** | `Client Joe` |
+   | **User** | `john_doe_admin` — John Doe, admin (`is_staff=True`, `is_superuser=True`), password `changeme` |
+   | **User** | `john_doe` — John Doe, regular user, password `changeme` |
+   | **User profiles** | Both users associated with `Client Joe` |
+   | **Project** | `Project X` under `Client Joe` |
+   | **Task types** | `Design`, `Development`, `Meeting` |
+
+   > **Change passwords after setup.** The seed password `changeme` is intentionally weak. Run `python manage.py changepassword <username>` or update via Django Admin before exposing the app to any network.
+
 5. **Create a superuser (optional)**
 
    ```bash

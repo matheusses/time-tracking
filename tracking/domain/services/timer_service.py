@@ -98,11 +98,13 @@ class TimerService:
             started_at=now,
             ended_at=None,
         )
+        # Always set time_entry_id so tracking_timeraction links to the created TimeEntry
+        entry_id = active.entry_id
         self._action_repo.append(
             user_id=user_id,
             action="start",
             occurred_at=now,
-            time_entry_id=active.entry_id,
+            time_entry_id=entry_id,
             project_id=project_id,
             task_type_id=task_type_id,
         )
@@ -130,9 +132,10 @@ class TimerService:
             )
 
         duration_seconds = int((now - active.started_at).total_seconds())
-        self._repo.set_ended_at(entry_id=active.entry_id, ended_at=now)
         entry_id = active.entry_id
+        self._repo.set_ended_at(entry_id=entry_id, ended_at=now)
 
+        # Always set time_entry_id so tracking_timeraction links to the stopped TimeEntry
         self._action_repo.append(
             user_id=user_id,
             action="stop",

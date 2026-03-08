@@ -14,7 +14,7 @@ from core.tests.factories import (
     user_factory,
 )
 from tracking.application.dtos import StartTimerInputDTO, StopTimerInputDTO
-from tracking.models import TimeEntry
+from tracking.models import TimeEntry, TimerAction
 
 
 class TimerFlowIntegrationTests(TestCase):
@@ -69,3 +69,19 @@ class TimerFlowIntegrationTests(TestCase):
         self.assertEqual(
             TimeEntry.objects.filter(user=self.user, ended_at__isnull=True).count(), 0
         )
+
+    def test_timer_actions_have_time_entry_id_set(self):
+        """TimerAction rows (event log) must have time_entry_id linking to the TimeEntry."""
+        self.client.start_timer(self._start_dto())
+        entry = TimeEntry.objects.get(user=self.user, ended_at__isnull=True)
+        start_actions = TimerAction.objects.filter(
+            user=self.user, action=TimerAction.Action.START
+        )
+        self.assertEqual(start_actions.count(), 1)
+        self.assertEqual(start_actions.get().time_entry_id, entry.id)
+        self.client.stop_timer(StopTimerInputDTO(user_id=self.user.id))
+        stop_actions = TimerAction.objects.filter(
+            user=self.user, action=TimerAction.Action.STOP
+        )
+        self.assertEqual(stop_actions.count(), 1)
+        self.assertEqual(stop_actions.get().time_entry_id, entry.id)
