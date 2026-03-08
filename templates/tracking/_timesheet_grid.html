@@ -1,6 +1,7 @@
 {# HTMX partial: week navigation and grid. Loaded into #timesheet-grid-container. #}
 {% load tracking_extras %}
 <nav class="flex items-center gap-4 mb-4" aria-label="Week navigation">
+  {% if prev_enabled %}
   <a href="{% url 'tracking:timesheet' %}?week={{ prev_param }}"
      class="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
      hx-get="{% url 'tracking:timesheet_grid' %}?week={{ prev_param }}"
@@ -8,9 +9,13 @@
      hx-swap="innerHTML"
      hx-push-url="{% url 'tracking:timesheet' %}?week={{ prev_param }}"
      hx-trigger="click">← Previous</a>
+  {% else %}
+  <span class="rounded border border-gray-200 bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-400 cursor-not-allowed" aria-disabled="true">← Previous</span>
+  {% endif %}
   <span class="text-sm font-medium text-gray-700">
     Week of {{ week_start|date:"M j" }} – {{ week_start|date:"o" }}-W{{ week_start|date:"W" }}
   </span>
+  {% if next_enabled %}
   <a href="{% url 'tracking:timesheet' %}?week={{ next_param }}"
      class="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
      hx-get="{% url 'tracking:timesheet_grid' %}?week={{ next_param }}"
@@ -18,6 +23,14 @@
      hx-swap="innerHTML"
      hx-push-url="{% url 'tracking:timesheet' %}?week={{ next_param }}"
      hx-trigger="click">Next →</a>
+  {% else %}
+  <span class="rounded border border-gray-200 bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-400 cursor-not-allowed" aria-disabled="true">Next →</span>
+  {% endif %}
+  <button type="button"
+          id="timesheet-save-all"
+          class="ml-auto rounded border border-green-600 bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700">
+    Save
+  </button>
 </nav>
 <div class="overflow-x-auto">
   <table class="min-w-full divide-y divide-gray-200 text-left text-sm">

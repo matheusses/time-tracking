@@ -86,6 +86,8 @@ The codebase follows clean layering: views call use cases, use cases call domain
 - **Route**: `/timesheet/` (optional `?week=YYYY-Www`, e.g. `2025-W10`). Requires login.
 - **Behavior**: One optimized query loads all time entries for the week; grid shows rows (project × task type) and columns (Mon–Sun). Previous/Next week use HTMX to swap only the grid (no full-page reload). Each cell is an inline-editable hours field; on change, HTMX POSTs to `/timesheet/update/` and the cell is replaced with the updated value.
 - **Manual hours**: Time entries can have an optional `manual_duration_seconds` (e.g. for manual log or adjustment). Timer entries and manual entries for the same (user, date, project, task) are summed in the cell.
+- **Manual entry**: The grid includes a row for every (project × task type) combination (from the user’s available projects and global task types), so users can add hours in any cell even when no entry exists for that day; submitting creates a new manual time entry. Editing an existing cell updates the manual entry or creates one. See [Manual entry and validation](docs/manual-entry.md).
+- **Validation**: Hours must be non-negative; `project_id` and `task_type_id` (when provided) must exist. Invalid input returns the same cell partial with an error message (no full-page reload).
 - **Layers**: `tracking.views.timesheet_views` → `GenerateWeeklyTimesheetUseCase` / `UpdateTimeEntryUseCase` → `TimesheetService` → ORM.
 
 ---
@@ -108,7 +110,8 @@ The codebase follows clean layering: views call use cases, use cases call domain
   python manage.py runserver
   ```
 
-  Then open http://127.0.0.1:8000/
+  Then open http://127.0.0.1:8000/  
+  Log in at http://127.0.0.1:8000/accounts/login/ (use a user created with `createsuperuser` or another user you have created).
 
 - **Run with Docker Compose (app + PostgreSQL)**
 
@@ -166,7 +169,7 @@ Tests should be added for any new or modified code (unit at minimum; integration
 
 - **Secrets**: Never commit `.env`. Use `DJANGO_SECRET_KEY` and `DATABASE_URL` (or equivalent) from the environment. Rotate secrets in production.
 - **OWASP alignment**: Input validation and sanitization at boundaries; CSRF and XSS protections (Django defaults); use ORM/parameterized queries to avoid SQL injection.
-- **Authentication**: Use Django auth; protect admin and sensitive views; enforce strong passwords via `AUTH_PASSWORD_VALIDATORS`.
+- **Authentication**: Use Django auth; protect admin and sensitive views; enforce strong passwords via `AUTH_PASSWORD_VALIDATORS`. A login page is available at `/accounts/login/`; after login users are redirected to the home page. Timer and timesheet views require an authenticated user.
 - **Production**: Set `DEBUG=false`, restrict `ALLOWED_HOSTS`, use HTTPS, and follow [Django deployment checklist](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/).
 
 **Security contact**: Report vulnerabilities privately to the maintainers (see CODEOWNERS); do not open public issues for security-sensitive findings.

@@ -9,6 +9,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 
 from tracking.application.dtos import UpdateTimeEntryInputDTO
+from tracking.domain.services.timesheet_service import TimesheetValidationError
 from tracking.use_cases.generate_weekly_timesheet import execute as generate_weekly_timesheet
 from tracking.use_cases.update_time_entry import execute as update_time_entry_uc
 
@@ -48,7 +49,11 @@ def timesheet_page(request: HttpRequest) -> HttpResponse:
     week_start = _parse_week_param(request.GET.get("week"))
     if week_start is None:
         week_start = _monday_of_week(date.today())
-    timesheet = generate_weekly_timesheet(user_id=request.user.id, week_start=week_start)
+    timesheet = generate_weekly_timesheet(
+        user_id=request.user.id,
+        week_start=week_start,
+        is_staff=request.user.is_staff,
+    )
     week_days = _week_range(week_start)
     prev_week = week_start - timedelta(days=7)
     next_week = week_start + timedelta(days=7)
@@ -56,6 +61,9 @@ def timesheet_page(request: HttpRequest) -> HttpResponse:
     week_param = f"{year}-W{week_num:02d}"
     prev_param = f"{prev_week.isocalendar()[0]}-W{prev_week.isocalendar()[1]:02d}"
     next_param = f"{next_week.isocalendar()[0]}-W{next_week.isocalendar()[1]:02d}"
+    current_week_start = _monday_of_week(date.today())
+    prev_enabled = True  # can always go to a past week
+    next_enabled = next_week <= current_week_start  # disable when next week would be future
     return render(
         request,
         TIMESHEET_PAGE,
@@ -68,6 +76,9 @@ def timesheet_page(request: HttpRequest) -> HttpResponse:
             "week_param": week_param,
             "prev_param": prev_param,
             "next_param": next_param,
+            "current_week_start": current_week_start,
+            "prev_enabled": prev_enabled,
+            "next_enabled": next_enabled,
         },
     )
 
@@ -78,7 +89,11 @@ def timesheet_grid_partial(request: HttpRequest) -> HttpResponse:
     week_start = _parse_week_param(request.GET.get("week"))
     if week_start is None:
         week_start = _monday_of_week(date.today())
-    timesheet = generate_weekly_timesheet(user_id=request.user.id, week_start=week_start)
+    timesheet = generate_weekly_timesheet(
+        user_id=request.user.id,
+        week_start=week_start,
+        is_staff=request.user.is_staff,
+    )
     week_days = _week_range(week_start)
     prev_week = week_start - timedelta(days=7)
     next_week = week_start + timedelta(days=7)
@@ -86,6 +101,9 @@ def timesheet_grid_partial(request: HttpRequest) -> HttpResponse:
     week_param = f"{year}-W{week_num:02d}"
     prev_param = f"{prev_week.isocalendar()[0]}-W{prev_week.isocalendar()[1]:02d}"
     next_param = f"{next_week.isocalendar()[0]}-W{next_week.isocalendar()[1]:02d}"
+    current_week_start = _monday_of_week(date.today())
+    prev_enabled = week_start < current_week_start
+    next_enabled = next_week <= current_week_start
     return render(
         request,
         TIMESHEET_GRID_PARTIAL,
@@ -95,6 +113,9 @@ def timesheet_grid_partial(request: HttpRequest) -> HttpResponse:
             "week_start": week_start,
             "prev_week": prev_week,
             "next_week": next_week,
+            "current_week_start": current_week_start,
+            "prev_enabled": prev_enabled,
+            "next_enabled": next_enabled,
             "week_param": week_param,
             "prev_param": prev_param,
             "next_param": next_param,
@@ -143,11 +164,29 @@ def update_time_entry(request: HttpRequest) -> HttpResponse:
         task_type_id=task_type_id,
         hours=hours,
     )
-    update_time_entry_uc(dto)
+    try:
+        update_time_entry_uc(dto)
+    except TimesheetValidationError as e:
+        # Return cell partial with error so HTMX still swaps and user sees the message
+        return render(
+            request,
+            TIMESHEET_CELL_PARTIAL,
+            {
+                "total_seconds": max(0, int(round(hours * 3600))),
+                "date": entry_date,
+                "project_id": project_id,
+                "task_type_id": task_type_id,
+                "error_message": str(e),
+            },
+        )
 
     # Re-fetch timesheet to get updated totals for that row/day
     week_start = _monday_of_week(entry_date)
-    timesheet = generate_weekly_timesheet(user_id=request.user.id, week_start=week_start)
+    timesheet = generate_weekly_timesheet(
+        user_id=request.user.id,
+        week_start=week_start,
+        is_staff=request.user.is_staff,
+    )
     week_days = _week_range(week_start)
     # Find the row and day for the cell
     total_seconds = 0

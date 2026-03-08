@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Log in — Time Tracking{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-md">
+  <div class="rounded-lg bg-white p-6 shadow sm:p-8">
+    <h2 class="text-xl font-semibold text-gray-900">Log in</h2>
+    <p class="mt-1 text-sm text-gray-600">Sign in to track time and manage your timesheet.</p>
+
+    <form method="post" action="{% url 'login' %}" class="mt-6 space-y-4">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}" />
+
+      {% if form.non_field_errors %}
+      <div class="rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
+        {{ form.non_field_errors }}
+      </div>
+      {% endif %}
+
+      <div>
+        <label for="id_username" class="block text-sm font-medium text-gray-700">Username</label>
+        <input
+          type="text"
+          name="username"
+          id="id_username"
+          autocomplete="username"
+          required
+          autofocus
+          value="{{ form.username.value|default:'' }}"
+          class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 {% if form.username.errors %}border-red-500{% endif %}"
+          placeholder="Your username"
+        />
+        {% if form.username.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ form.username.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <div>
+        <label for="id_password" class="block text-sm font-medium text-gray-700">Password</label>
+        <input
+          type="password"
+          name="password"
+          id="id_password"
+          autocomplete="current-password"
+          required
+          class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 {% if form.password.errors %}border-red-500{% endif %}"
+          placeholder="Your password"
+        />
+        {% if form.password.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ form.password.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <div class="pt-2">
+        <button
+          type="submit"
+          class="w-full rounded-md bg-green-600 px-4 py-2.5 text-sm font-medium text-white shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+        >
+          Log in
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

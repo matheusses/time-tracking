@@ -1,6 +1,7 @@
 """
 TimesheetService: weekly aggregation and update/create of time entries.
 Efficient queries to avoid N+1 when building the weekly grid.
+Validation: non-negative hours, valid date, project_id/task_type_id must exist when provided.
 """
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -8,7 +9,16 @@ from typing import Optional
 
 from django.utils import timezone
 
+from project_management.models import Project, TaskType
 from tracking.models import TimeEntry
+
+
+class TimesheetValidationError(ValueError):
+    """Raised when manual entry validation fails (invalid date, project, task, or hours)."""
+
+    def __init__(self, message: str, code: str = "invalid"):
+        self.code = code
+        super().__init__(message)
 
 
 class TimesheetService:
@@ -82,7 +92,15 @@ class TimesheetService:
         Set manual hours for (user, date, project, task_type). Creates a manual entry
         or updates the existing one for that cell. Other timer entries for the same
         (user, date, project, task) are left as-is (totals sum).
+        Validates: non-negative hours, project_id/task_type_id exist when provided.
         """
+        if hours < 0:
+            raise TimesheetValidationError("Hours must be non-negative.", code="invalid_hours")
+        if project_id is not None and not Project.objects.filter(pk=project_id).exists():
+            raise TimesheetValidationError("Invalid project.", code="invalid_project")
+        if task_type_id is not None and not TaskType.objects.filter(pk=task_type_id).exists():
+            raise TimesheetValidationError("Invalid task type.", code="invalid_task_type")
+
         duration_seconds = max(0, int(round(hours * 3600)))
         # Use noon on the date to avoid timezone boundary issues
         tz = timezone.get_current_timezone()

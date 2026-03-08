@@ -25,7 +25,7 @@ Users should be able to manually enter and update hours for any day from the wee
 
 ## Tasks
 
-- [ ] 1.0 Allow adding hours for a day/project/task when no entry exists (create new time entry from grid)
-- [ ] 2.0 Allow updating existing hours from the grid (edit existing time entry)
-- [ ] 3.0 Validation and persistence in domain/service layer (e.g. non-negative hours, valid date/project/task)
-- [ ] 4.0 HTMX or form submit with partial response for updated cell/row (no full-page reload)
+- [x] 1.0 Allow adding hours for a day/project/task when no entry exists (create new time entry from grid)
+- [x] 2.0 Allow updating existing hours from the grid (edit existing time entry)
+- [x] 3.0 Validation and persistence in domain/service layer (e.g. non-negative hours, valid date/project/task)
+- [x] 4.0 HTMX or form submit with partial response for updated cell/row (no full-page reload)

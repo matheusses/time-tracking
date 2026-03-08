@@ -89,10 +89,38 @@ class GenerateWeeklyTimesheetUseCaseTests(TestCase):
             started_at=timezone.make_aware(datetime(2025, 3, 3, 10, 0), tz),
             ended_at=timezone.make_aware(datetime(2025, 3, 3, 11, 0), tz),
         )
-        dto = generate_weekly_timesheet(self.user.id, week_start)
+        dto = generate_weekly_timesheet(
+            self.user.id, week_start, include_empty_rows=False
+        )
         self.assertEqual(len(dto.rows), 1)
         self.assertEqual(dto.rows[0].project_id, project.id)
         self.assertEqual(dto.rows[0].day_totals[week_start], 3600)
+
+    def test_execute_with_include_empty_rows_includes_all_project_task_combos(self):
+        from datetime import date
+
+        from tracking.tests.factories import ProjectFactory, TaskTypeFactory
+        from tracking.use_cases.generate_weekly_timesheet import (
+            execute as generate_weekly_timesheet,
+        )
+
+        p1 = ProjectFactory(name="P1")
+        p2 = ProjectFactory(name="P2")
+        t1 = TaskTypeFactory(name="T1")
+        t2 = TaskTypeFactory(name="T2")
+        week_start = date(2025, 3, 3)
+        dto = generate_weekly_timesheet(
+            self.user.id, week_start, is_staff=True, include_empty_rows=True
+        )
+        # Should have 4 rows (2 projects × 2 task types), all with zero totals
+        self.assertEqual(len(dto.rows), 4)
+        row_keys = {(r.project_id, r.task_type_id) for r in dto.rows}
+        self.assertEqual(
+            row_keys,
+            {(p1.id, t1.id), (p1.id, t2.id), (p2.id, t1.id), (p2.id, t2.id)},
+        )
+        for row in dto.rows:
+            self.assertEqual(sum(row.day_totals.values()), 0)
 
 
 class UpdateTimeEntryUseCaseTests(TestCase):
@@ -122,3 +150,43 @@ class UpdateTimeEntryUseCaseTests(TestCase):
         self.assertIsNotNone(entry.id)
         self.assertEqual(entry.manual_duration_seconds, 7200)
         self.assertEqual(TimeEntry.objects.filter(user=self.user).count(), 1)
+
+    def test_execute_raises_on_invalid_project_id(self):
+        from datetime import date
+
+        from tracking.application.dtos import UpdateTimeEntryInputDTO
+        from tracking.domain.services.timesheet_service import TimesheetValidationError
+        from tracking.use_cases.update_time_entry import execute as update_time_entry
+        from tracking.tests.factories import TaskTypeFactory
+
+        task = TaskTypeFactory()
+        dto = UpdateTimeEntryInputDTO(
+            user_id=self.user.id,
+            date=date(2025, 3, 5),
+            project_id=99999,  # does not exist
+            task_type_id=task.id,
+            hours=1.0,
+        )
+        with self.assertRaises(TimesheetValidationError) as cm:
+            update_time_entry(dto)
+        self.assertIn("project", str(cm.exception).lower())
+
+    def test_execute_raises_on_invalid_task_type_id(self):
+        from datetime import date
+
+        from tracking.application.dtos import UpdateTimeEntryInputDTO
+        from tracking.domain.services.timesheet_service import TimesheetValidationError
+        from tracking.use_cases.update_time_entry import execute as update_time_entry
+        from tracking.tests.factories import ProjectFactory
+
+        project = ProjectFactory()
+        dto = UpdateTimeEntryInputDTO(
+            user_id=self.user.id,
+            date=date(2025, 3, 5),
+            project_id=project.id,
+            task_type_id=99999,  # does not exist
+            hours=1.0,
+        )
+        with self.assertRaises(TimesheetValidationError) as cm:
+            update_time_entry(dto)
+        self.assertIn("task", str(cm.exception).lower())

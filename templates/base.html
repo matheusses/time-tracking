@@ -10,13 +10,36 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
     <header class="bg-white shadow-sm border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
-            <h1 class="text-xl font-semibold text-gray-800">Time Tracking</h1>
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex items-center justify-between">
+            <h1 class="text-xl font-semibold text-gray-800">
+                <a href="{% url 'tracking:home' %}" class="text-gray-800 hover:text-gray-900">Time Tracking</a>
+            </h1>
+            <nav class="flex items-center gap-4">
+                {% if user.is_authenticated %}
+                <span class="text-sm text-gray-600">{{ user.get_username }}</span>
+                <form method="post" action="{% url 'logout' %}" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" class="text-sm font-medium text-gray-600 hover:text-gray-900 bg-transparent border-none cursor-pointer p-0">Log out</button>
+                </form>
+                {% else %}
+                <a href="{% url 'login' %}" class="text-sm font-medium text-green-600 hover:text-green-800">Log in</a>
+                {% endif %}
+            </nav>
         </div>
     </header>
     <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         {% block content %}{% endblock %}
     </main>
     {% block extra_scripts %}{% endblock %}
+    <script>
+    document.body.addEventListener('click', function(e) {
+      if (e.target.id === 'timesheet-save-all') {
+        var container = document.getElementById('timesheet-grid-container');
+        if (container) {
+          container.querySelectorAll('form').forEach(function(f) { f.requestSubmit(); });
+        }
+      }
+    });
+    </script>
 </body>
 </html>

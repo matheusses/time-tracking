@@ -4,21 +4,30 @@ Tests for presentation layer (views).
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from tracking.tests.factories import UserFactory
+from tracking.tests.factories import (
+    ProjectFactory,
+    TaskTypeFactory,
+    UserFactory,
+)
 
 
 class HomeViewTests(TestCase):
-    """Test home view returns 200 and uses correct template."""
+    """Test home view: redirects anonymous to login, renders home when authenticated."""
 
     def setUp(self):
         self.client = Client()
 
-    def test_home_returns_200(self):
+    def test_home_redirects_anonymous_to_login(self):
+        response = self.client.get(reverse("tracking:home"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("login"), response.url)
+        self.assertIn("next=", response.url)
+
+    def test_home_returns_200_when_authenticated(self):
+        user = UserFactory()
+        self.client.force_login(user)
         response = self.client.get(reverse("tracking:home"))
         self.assertEqual(response.status_code, 200)
-
-    def test_home_uses_home_template(self):
-        response = self.client.get(reverse("tracking:home"))
         self.assertTemplateUsed(response, "tracking/home.html")
 
 
@@ -77,3 +86,20 @@ class TimesheetViewTests(TestCase):
         response = self.client.post(reverse("tracking:timesheet_update"), post_data)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "tracking/_timesheet_cell.html")
+
+    def test_update_time_entry_validation_error_returns_cell_with_message(self):
+        self.client.force_login(self.user)
+        self.client.get(reverse("tracking:timesheet"))
+        csrf = self.client.cookies.get("csrftoken")
+        post_data = {
+            "date": "2025-03-05",
+            "project_id": "99999",  # invalid
+            "task_type_id": "99999",  # invalid
+            "hours": "1",
+        }
+        if csrf:
+            post_data["csrfmiddlewaretoken"] = csrf.value
+        response = self.client.post(reverse("tracking:timesheet_update"), post_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tracking/_timesheet_cell.html")
+        self.assertContains(response, "Invalid", status_code=200)

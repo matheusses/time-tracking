@@ -6,7 +6,11 @@ from datetime import date, datetime, timedelta
 from django.test import TestCase
 from django.utils import timezone
 
-from tracking.domain.services.timesheet_service import TimesheetService, _days_in_week
+from tracking.domain.services.timesheet_service import (
+    TimesheetService,
+    TimesheetValidationError,
+    _days_in_week,
+)
 from tracking.models import TimeEntry
 from tracking.tests.factories import (
     ProjectFactory,
@@ -179,15 +183,16 @@ class TimesheetServiceUpdateOrCreateTests(TestCase):
             1,
         )
 
-    def test_negative_hours_clamped_to_zero(self):
-        entry = self.service.update_or_create_entry(
-            user_id=self.user.id,
-            entry_date=self.entry_date,
-            project_id=None,
-            task_type_id=None,
-            hours=-1.0,
-        )
-        self.assertEqual(entry.manual_duration_seconds, 0)
+    def test_negative_hours_raises_validation_error(self):
+        with self.assertRaises(TimesheetValidationError) as cm:
+            self.service.update_or_create_entry(
+                user_id=self.user.id,
+                entry_date=self.entry_date,
+                project_id=None,
+                task_type_id=None,
+                hours=-1.0,
+            )
+        self.assertIn("non-negative", str(cm.exception))
 
 
 class DaysInWeekTests(TestCase):

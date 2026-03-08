@@ -3,7 +3,13 @@
 {% block title %}Weekly timesheet — Time Tracking{% endblock %}
 {% block content %}
 <div class="rounded-lg bg-white p-6 shadow">
-  <h2 class="text-lg font-medium text-gray-900 mb-4">Weekly timesheet</h2>
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-medium text-gray-900">Weekly timesheet</h2>
+    <a href="{% url 'tracking:home' %}"
+       class="rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+      ← Home
+    </a>
+  </div>
   <div id="timesheet-grid-container">
     {% include "tracking/_timesheet_grid.html" with timesheet=timesheet week_days=week_days week_start=week_start prev_week=prev_week next_week=next_week week_param=week_param prev_param=prev_param next_param=next_param %}
   </div>
