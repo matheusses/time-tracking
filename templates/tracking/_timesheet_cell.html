@@ -4,11 +4,10 @@
   {% if error_message %}
   <p class="text-xs text-red-600 mb-1" role="alert">{{ error_message }}</p>
   {% endif %}
-  <form class="inline"
+  <form class="timesheet-cell-form inline"
         hx-post="{% url 'tracking:timesheet_update' %}"
         hx-target="closest td"
-        hx-swap="innerHTML"
-        hx-trigger="change delay:200ms">
+        hx-swap="innerHTML">
     {% csrf_token %}
     <input type="hidden" name="date" value="{{ date.isoformat }}" />
     <input type="hidden" name="project_id" value="{{ project_id|default:'' }}" />
@@ -16,12 +15,16 @@
     <input type="number"
            name="hours"
            value="{{ total_seconds|seconds_to_hours }}"
-           step="0.25"
+           step="0.01"
            min="0"
-           class="w-16 rounded border border-gray-300 px-1 py-0.5 text-sm focus:border-green-500 focus:ring-1 focus:ring-green-500 {% if error_message %}border-red-500{% endif %}"
+           class="w-20 rounded border border-gray-300 px-1 py-0.5 text-sm text-right tabular-nums focus:border-green-500 focus:ring-1 focus:ring-green-500 {% if error_message %}border-red-500{% endif %}"
            aria-label="Hours for {{ date|date:'M j' }}"
-           aria-invalid="{% if error_message %}true{% else %}false{% endif %}" />
+           aria-invalid="{% if error_message %}true{% else %}false{% endif %}"
+           inputmode="decimal" />
   </form>
 {% else %}
-  <span class="text-gray-700 tabular-nums">{{ total_seconds|duration_hours }}</span>
+  {# Same footprint as edit control so layout doesn't shift when switching modes #}
+  <div class="inline-flex items-center justify-center w-20 h-7 rounded border border-gray-200 bg-gray-50/80 text-sm tabular-nums text-gray-700 text-right">
+    {{ total_seconds|seconds_to_hours|floatformat:2 }}
+  </div>
 {% endif %}

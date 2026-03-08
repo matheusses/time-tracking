@@ -123,6 +123,25 @@ class TimesheetViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "tracking/_timesheet_cell.html")
 
+    def test_update_time_entry_post_accepts_typed_integer_hours(self):
+        """Typed value like '2' (no decimal) is saved correctly."""
+        self.client.force_login(self.user)
+        self.client.get(reverse("tracking:timesheet"))
+        csrf = self.client.cookies.get("csrftoken")
+        post_data = {
+            "date": "2025-03-05",
+            "project_id": "",
+            "task_type_id": "",
+            "hours": "2",
+        }
+        if csrf:
+            post_data["csrfmiddlewaretoken"] = csrf.value
+        response = self.client.post(reverse("tracking:timesheet_update"), post_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tracking/_timesheet_cell.html")
+        # Cell re-renders with saved value (2 hours); input is present with correct name
+        self.assertContains(response, 'name="hours"')
+
     def test_update_time_entry_validation_error_returns_cell_with_message(self):
         self.client.force_login(self.user)
         self.client.get(reverse("tracking:timesheet"))

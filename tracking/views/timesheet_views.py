@@ -103,7 +103,11 @@ def timesheet_grid_partial(request: HttpRequest) -> HttpResponse:
     )
     # HTMX can request editable=1 (Edit) or editable=0 (read-only)
     context["timesheet_editable"] = request.GET.get("editable", "0") == "1"
-    return render(request, TIMESHEET_GRID_PARTIAL, context)
+    response = render(request, TIMESHEET_GRID_PARTIAL, context)
+    # Ensure Cancel always gets fresh DB state (no cached grid)
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response["Pragma"] = "no-cache"
+    return response
 
 
 @login_required
@@ -138,7 +142,7 @@ def update_time_entry(request: HttpRequest) -> HttpResponse:
         hours = float(request.POST.get("hours", "0"))
     except (TypeError, ValueError):
         hours = 0.0
-    hours = max(0.0, hours)
+    hours = round(max(0.0, hours), 2)
 
     dto = UpdateTimeEntryInputDTO(
         user_id=request.user.id,
