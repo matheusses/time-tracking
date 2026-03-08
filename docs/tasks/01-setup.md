@@ -14,6 +14,13 @@
 - `requirements.txt` or `pyproject.toml` - Python dependencies (Django 5.2+, psycopg, etc.)
 - Environment/config for database URL and secrets (e.g. `.env`, 12-factor)
 
+### Container / Docker
+
+- `Dockerfile` - Multi-stage image: builder stage (install deps, optional static/tooling), final stage (slim runtime, copy app and deps, non-root user, run server)
+- `docker-compose.yml` (or `compose.yaml`) - Compose stack: Django app service + PostgreSQL service, env, volumes for DB persistence
+- `docker-compose-debug.yml` - Debug/development Compose: same services with volume mounts for live code, debugger port, runserver or shell, optional debug tools
+- `.dockerignore` - Exclude git, `__pycache__`, `.env`, virtualenvs, and other non-build artifacts
+
 ### Documentation Files
 
 - `README.md` - Setup, run, test commands; security considerations
@@ -26,4 +33,5 @@
 - [ ] 2.0 Configure PostgreSQL database and connection
 - [ ] 3.0 Add HTMX and Tailwind CSS (CDN or build; align with django-htmx-tailwind skill)
 - [ ] 4.0 Establish folder structure reflecting ADR layers (e.g. `use_cases/`, `domain/services/`, `domain/models/`, views/templates)
-- [ ] 5.0 Document setup, run, and test commands in README; security considerations and CODEOWNERS
+- [ ] 5.0 Document setup, run, and test commands (local and Docker) in README; security considerations and CODEOWNERS
+- [ ] 6.0 Add multi-stage Dockerfile and Docker Compose: app service + PostgreSQL, env/config for DB and secrets. Add `docker-compose-debug.yml` for debug/development (volume mounts, debug port, runserver/shell). Document Docker and debug-compose commands in README
