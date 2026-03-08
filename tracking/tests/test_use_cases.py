@@ -146,9 +146,9 @@ class UpdateTimeEntryUseCaseTests(TestCase):
             task_type_id=task.id,
             hours=2.0,
         )
-        entry = update_time_entry(dto)
-        self.assertIsNotNone(entry.id)
-        self.assertEqual(entry.manual_duration_seconds, 7200)
+        result = update_time_entry(dto)
+        self.assertIsNotNone(result.id)
+        self.assertEqual(result.manual_duration_seconds, 7200)
         self.assertEqual(TimeEntry.objects.filter(user=self.user).count(), 1)
 
     def test_execute_raises_on_invalid_project_id(self):

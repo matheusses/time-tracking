@@ -2,7 +2,7 @@
 DTOs for timer and timesheet use cases. Used by views to pass input and by use cases to return results.
 """
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 
@@ -22,7 +22,30 @@ class StopTimerInputDTO:
     user_id: int
 
 
-# Result type: use cases return tracking.domain.models.TimerResult (no separate output DTO).
+# --- Timer output DTOs (service return types; use cases may use domain TimerResult or these) ---
+
+
+@dataclass(frozen=True)
+class ActiveTimerStateDTO:
+    """Active timer state for API/views. Mirrors domain ActiveTimerState."""
+
+    entry_id: int
+    project_id: Optional[int]
+    project_name: Optional[str]
+    task_type_id: Optional[int]
+    task_type_name: Optional[str]
+    started_at: datetime
+
+
+@dataclass(frozen=True)
+class TimerResultDTO:
+    """Result of start/stop timer. Mirrors domain TimerResult."""
+
+    success: bool
+    message: str
+    active_timer: Optional[ActiveTimerStateDTO] = None
+    stopped_entry_id: Optional[int] = None
+    stopped_duration_seconds: Optional[int] = None
 
 
 # --- Timesheet DTOs ---
@@ -56,3 +79,15 @@ class UpdateTimeEntryInputDTO:
     project_id: Optional[int]
     task_type_id: Optional[int]
     hours: float
+
+
+@dataclass(frozen=True)
+class TimeEntrySummaryDTO:
+    """Summary of a time entry after create/update (manual hours). No ORM."""
+
+    id: int
+    user_id: int
+    project_id: Optional[int]
+    task_type_id: Optional[int]
+    entry_date: date
+    manual_duration_seconds: int

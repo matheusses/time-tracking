@@ -87,3 +87,29 @@ class TimerServiceStopTests(TestCase):
         self.assertIsNotNone(active)
         self.assertIsNotNone(active.entry_id)
         self.assertEqual(active.started_at, TimeEntry.objects.get(user=self.user).started_at)
+
+    def test_get_active_timer_includes_project_and_task_type_names_when_set(self):
+        """Active timer state exposes project_name and task_type_name from related models."""
+        project = ProjectFactory(name="My Project")
+        task_type = TaskTypeFactory(name="Development")
+        self.service.start(
+            self.user.id,
+            project_id=project.id,
+            task_type_id=task_type.id,
+        )
+        active = self.service.get_active_timer(self.user.id)
+        self.assertIsNotNone(active)
+        self.assertEqual(active.project_id, project.id)
+        self.assertEqual(active.project_name, "My Project")
+        self.assertEqual(active.task_type_id, task_type.id)
+        self.assertEqual(active.task_type_name, "Development")
+
+    def test_single_active_timer_per_user_only_one_running_at_a_time(self):
+        """Enforce single-timer rule: after start, exactly one entry has ended_at=None."""
+        self.service.start(self.user.id)
+        self.service.start(self.user.id)
+        self.service.start(self.user.id)
+        active_count = TimeEntry.objects.filter(user=self.user, ended_at__isnull=True).count()
+        self.assertEqual(active_count, 1)
+        completed_count = TimeEntry.objects.filter(user=self.user, ended_at__isnull=False).count()
+        self.assertEqual(completed_count, 2)

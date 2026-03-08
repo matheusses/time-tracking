@@ -1,9 +1,10 @@
 """
 Unit tests for TimesheetService: weekly aggregation and update_or_create_entry.
+Asserts single-query behavior for get_weekly_aggregation (no N+1).
 """
 from datetime import date, datetime, timedelta
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from tracking.domain.services.timesheet_service import (
@@ -144,17 +145,17 @@ class TimesheetServiceUpdateOrCreateTests(TestCase):
         self.task = TaskTypeFactory()
 
     def test_creates_manual_entry_when_none(self):
-        entry = self.service.update_or_create_entry(
+        summary = self.service.update_or_create_entry(
             user_id=self.user.id,
             entry_date=self.entry_date,
             project_id=self.project.id,
             task_type_id=self.task.id,
             hours=2.5,
         )
-        self.assertIsNotNone(entry.id)
-        self.assertEqual(entry.manual_duration_seconds, 9000)  # 2.5 * 3600
-        self.assertEqual(entry.user_id, self.user.id)
-        self.assertEqual(entry.started_at.date(), self.entry_date)
+        self.assertIsNotNone(summary.id)
+        self.assertEqual(summary.manual_duration_seconds, 9000)  # 2.5 * 3600
+        self.assertEqual(summary.user_id, self.user.id)
+        self.assertEqual(summary.entry_date, self.entry_date)
 
     def test_updates_existing_manual_entry(self):
         self.service.update_or_create_entry(
@@ -164,14 +165,14 @@ class TimesheetServiceUpdateOrCreateTests(TestCase):
             task_type_id=self.task.id,
             hours=1.0,
         )
-        entry = self.service.update_or_create_entry(
+        summary = self.service.update_or_create_entry(
             user_id=self.user.id,
             entry_date=self.entry_date,
             project_id=self.project.id,
             task_type_id=self.task.id,
             hours=3.0,
         )
-        self.assertEqual(entry.manual_duration_seconds, 10800)
+        self.assertEqual(summary.manual_duration_seconds, 10800)
         self.assertEqual(
             TimeEntry.objects.filter(
                 user=self.user,

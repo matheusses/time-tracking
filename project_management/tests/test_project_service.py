@@ -21,23 +21,23 @@ class ProjectServiceListClientsTests(TestCase):
 
     def test_staff_sees_all_clients(self):
         user = UserFactory(is_staff=True)
-        clients = self.service.list_clients_for_user(user.id, is_staff=True)
-        self.assertEqual(len(clients), 2)
-        names = [c.name for c in clients]
+        rows = self.service.list_clients_for_user(user.id, is_staff=True)
+        self.assertEqual(len(rows), 2)
+        names = [r[1] for r in rows]
         self.assertIn("Client A", names)
         self.assertIn("Client B", names)
 
     def test_non_staff_without_profile_sees_none(self):
         user = UserFactory(is_staff=False)
-        clients = self.service.list_clients_for_user(user.id, is_staff=False)
-        self.assertEqual(len(clients), 0)
+        rows = self.service.list_clients_for_user(user.id, is_staff=False)
+        self.assertEqual(len(rows), 0)
 
     def test_non_staff_with_profile_sees_only_their_client(self):
         user = UserFactory(is_staff=False)
         UserProfileFactory(user=user, client=self.client_a)
-        clients = self.service.list_clients_for_user(user.id, is_staff=False)
-        self.assertEqual(len(clients), 1)
-        self.assertEqual(clients[0].name, "Client A")
+        rows = self.service.list_clients_for_user(user.id, is_staff=False)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][1], "Client A")
 
 
 class ProjectServiceListProjectsTests(TestCase):
@@ -53,23 +53,23 @@ class ProjectServiceListProjectsTests(TestCase):
 
     def test_staff_sees_all_projects(self):
         user = UserFactory(is_staff=True)
-        projects = self.service.list_projects_for_user(user.id, is_staff=True)
-        self.assertEqual(len(projects), 3)
+        rows = self.service.list_projects_for_user(user.id, is_staff=True)
+        self.assertEqual(len(rows), 3)
 
     def test_non_staff_sees_only_their_client_projects(self):
         user = UserFactory(is_staff=False)
         UserProfileFactory(user=user, client=self.client_a)
-        projects = self.service.list_projects_for_user(user.id, is_staff=False)
-        self.assertEqual(len(projects), 2)
-        names = [p.name for p in projects]
+        rows = self.service.list_projects_for_user(user.id, is_staff=False)
+        self.assertEqual(len(rows), 2)
+        names = [r[1] for r in rows]
         self.assertIn("Proj A1", names)
         self.assertIn("Proj A2", names)
         self.assertNotIn("Proj B1", names)
 
     def test_non_staff_without_profile_sees_none(self):
         user = UserFactory(is_staff=False)
-        projects = self.service.list_projects_for_user(user.id, is_staff=False)
-        self.assertEqual(len(projects), 0)
+        rows = self.service.list_projects_for_user(user.id, is_staff=False)
+        self.assertEqual(len(rows), 0)
 
 
 class ProjectServiceListTaskTypesTests(TestCase):
@@ -81,8 +81,8 @@ class ProjectServiceListTaskTypesTests(TestCase):
         TaskTypeFactory(name="Meeting")
 
     def test_returns_all_task_types(self):
-        task_types = self.service.list_task_types()
-        self.assertEqual(len(task_types), 2)
-        names = [t.name for t in task_types]
+        rows = self.service.list_task_types()
+        self.assertEqual(len(rows), 2)
+        names = [r[1] for r in rows]
         self.assertIn("Development", names)
         self.assertIn("Meeting", names)

@@ -49,6 +49,8 @@ flowchart TD
     end
 
     subgraph Infrastructure Layer
+        Repo[Repository]
+        DAO[DAO]
         DjangoORM
         PostgreSQL[(PostgreSQL)]
     end
@@ -59,10 +61,13 @@ flowchart TD
     UseCase --> TimesheetService
     UseCase --> ProjectService
 
-    TimerService --> DjangoORM
-    TimesheetService --> DjangoORM
-    ProjectService --> DjangoORM
+    TimerService -->|DTO| Repo
+    TimesheetService -->|DTO| Repo
+    TimesheetService --> DAO
+    ProjectService --> Repo
 
+    Repo --> DjangoORM
+    DAO --> DjangoORM
     DjangoORM --> PostgreSQL
 ```
 
@@ -122,10 +127,10 @@ Example:
 -   Enforces single-timer-per-user rule
 -   Domain validation
 
-**Important Rule:**
+**Important Rules:**
 
-All database operations happen inside **services**, not in models and
-not in other layers.
+-   **Services:** Receive **DTO in**, return **DTO out** (or domain value objects / row data). No Django model instances (ORM) in service method signatures or return types.
+-   **Persistence:** Services depend on **Repository** (and optionally **DAO**) abstractions; they do not use `Model.objects` or QuerySets directly. All DB access is delegated to the Repository/DAO layer.
 
 Services:
 
@@ -144,11 +149,16 @@ Domain Models:
 
 **Responsibilities:**
 
--   Django ORM
--   PostgreSQL
--   External integrations (if any)
+-   **Repository:** Persistence and querying of **domain entities/aggregates** (e.g. TimeEntry, Client, Project, TaskType, UserProfile). Naming: `TimeEntryRepository`, `ClientRepository`, etc. Implementations use Django ORM and translate to/from DTOs or domain types.
+-   **DAO:** Any other DB access that does not map to a single domain aggregate (e.g. existence checks, raw reporting). May be methods on a repository or a dedicated DAO class.
+-   Django ORM, PostgreSQL, external integrations
 
-Infrastructure is only accessed by Domain Services.
+**Repository vs DAO:**
+
+-   **Repository:** Domain entities only. Methods take/return DTOs or simple dataclasses (no ORM in interface).
+-   **DAO:** Non-entity DB operations (e.g. existence checks for validation, reporting). Used when the operation is not “load/save one aggregate”.
+
+Infrastructure is only accessed by Domain Services via Repository/DAO abstractions (dependency inversion).
 
 ------------------------------------------------------------------------
 
@@ -175,21 +185,22 @@ No circular dependencies.
 
 Database operations are allowed ONLY inside:
 
--   TimerService
--   TimesheetService
--   ProjectService
+-   **Repository** and **DAO** implementations (e.g. `TimeEntryRepository`, `ClientRepository`, `ProjectRepository`, `TaskTypeRepository`, `UserProfileRepository`)
+
+Services call repositories/DAOs; they do not use `Model.objects` or QuerySets.
 
 Not allowed in:
 
 -   Views
 -   Use Cases
 -   Domain Models
+-   Domain Services (services orchestrate and call repositories; they do not touch ORM directly)
 
 This guarantees:
 
 -   Predictable transaction handling
--   Easier testing
--   Better maintainability
+-   Easier testing (mock repositories in unit tests)
+-   Better maintainability and SOLID (dependency inversion)
 -   Clean architecture compliance
 
 ------------------------------------------------------------------------
@@ -200,12 +211,11 @@ This guarantees:
 2.  Django View receives request
 3.  View calls StartTimerUseCase
 4.  UseCase validates input and creates DTO
-5.  UseCase calls TimerService
+5.  UseCase calls TimerService (DTO in)
 6.  TimerService:
-    -   Stops any existing active timer
-    -   Creates new timer entry
-    -   Persists using Django ORM
-7.  Response returned to View
+    -   Calls TimeEntryRepository to stop any existing active timer and create a new entry
+    -   Returns domain value object (TimerResult with ActiveTimerState); no ORM in signature
+7.  Response (DTO/value object) returned to View
 8.  View renders partial template
 
 ------------------------------------------------------------------------
@@ -222,7 +232,7 @@ This guarantees:
 
 # Future Extensions
 
--   Add Repository abstraction if ORM decoupling is needed
+-   Repository/DAO layer is in place; further ORM decoupling can add alternative implementations (e.g. read replicas, caching).
 -   Introduce Domain Events for cross-module communication
 -   Add background job processing (Celery)
 -   Implement auditing and observability

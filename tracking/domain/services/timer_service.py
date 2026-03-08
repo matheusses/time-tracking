@@ -1,6 +1,6 @@
 """
-TimerService: all timer-related database operations.
-Enforces single active timer per user (stop existing before start).
+TimerService: timer start/stop business logic.
+DTO in, DTO out. All persistence via TimeEntryRepository (no ORM in service).
 """
 from datetime import timezone
 from typing import Optional
@@ -8,14 +8,21 @@ from typing import Optional
 from django.utils import timezone as django_tz
 
 from tracking.domain.models import ActiveTimerState, TimerResult
-from tracking.models import TimeEntry
+from tracking.domain.repositories import TimeEntryRepositoryProtocol
+from tracking.infrastructure.repositories import TimeEntryRepository
 
 
 class TimerService:
     """
     Domain service for starting and stopping timers.
-    All ORM access for time entries is centralized here.
+    Depends on TimeEntryRepository for persistence; returns domain value objects (TimerResult).
     """
+
+    def __init__(
+        self,
+        time_entry_repository: Optional[TimeEntryRepositoryProtocol] = None,
+    ):
+        self._repo = time_entry_repository if time_entry_repository is not None else TimeEntryRepository()
 
     def start(
         self,
@@ -31,20 +38,14 @@ class TimerService:
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
 
-        # Stop any existing active timer for this user
-        TimeEntry.objects.filter(user_id=user_id, ended_at__isnull=True).update(
-            ended_at=now
-        )
-
-        entry = TimeEntry.objects.create(
+        self._repo.stop_all_active(user_id=user_id, ended_at=now)
+        active = self._repo.create(
             user_id=user_id,
             project_id=project_id or None,
             task_type_id=task_type_id or None,
             started_at=now,
             ended_at=None,
         )
-
-        active = self._entry_to_active_state(entry)
         return TimerResult(
             success=True,
             message="Timer started.",
@@ -60,10 +61,7 @@ class TimerService:
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
 
-        active = TimeEntry.objects.filter(
-            user_id=user_id, ended_at__isnull=True
-        ).select_related("project", "task_type").first()
-
+        active = self._repo.get_active(user_id=user_id)
         if not active:
             return TimerResult(
                 success=False,
@@ -72,41 +70,18 @@ class TimerService:
             )
 
         duration_seconds = int((now - active.started_at).total_seconds())
-        active.ended_at = now
-        active.save(update_fields=["ended_at"])
-        entry_id = active.id
+        self._repo.set_ended_at(entry_id=active.entry_id, ended_at=now)
+        entry_id = active.entry_id
 
-        # Check if user has another active timer (should not happen)
-        next_active = TimeEntry.objects.filter(
-            user_id=user_id, ended_at__isnull=True
-        ).select_related("project", "task_type").first()
-
+        next_active = self._repo.get_active(user_id=user_id)
         return TimerResult(
             success=True,
             message="Timer stopped.",
-            active_timer=self._entry_to_active_state(next_active) if next_active else None,
+            active_timer=next_active,
             stopped_entry_id=entry_id,
             stopped_duration_seconds=duration_seconds,
         )
 
     def get_active_timer(self, user_id: int) -> Optional[ActiveTimerState]:
         """Return the current active timer for the user, or None."""
-        entry = (
-            TimeEntry.objects.filter(user_id=user_id, ended_at__isnull=True)
-            .select_related("project", "task_type")
-            .first()
-        )
-        return self._entry_to_active_state(entry) if entry else None
-
-    @staticmethod
-    def _entry_to_active_state(entry: Optional[TimeEntry]) -> Optional[ActiveTimerState]:
-        if entry is None:
-            return None
-        return ActiveTimerState(
-            entry_id=entry.id,
-            project_id=entry.project_id,
-            project_name=entry.project.name if entry.project else None,
-            task_type_id=entry.task_type_id,
-            task_type_name=entry.task_type.name if entry.task_type else None,
-            started_at=entry.started_at,
-        )
+        return self._repo.get_active(user_id=user_id)

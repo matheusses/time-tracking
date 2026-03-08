@@ -1,7 +1,6 @@
 """
 TimesheetService: weekly aggregation and update/create of time entries.
-Efficient queries to avoid N+1 when building the weekly grid.
-Validation: non-negative hours, valid date, project_id/task_type_id must exist when provided.
+DTO in, DTO/domain out. All persistence via repositories (no ORM in service).
 """
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -9,8 +8,17 @@ from typing import Optional
 
 from django.utils import timezone
 
-from project_management.models import Project, TaskType
-from tracking.models import TimeEntry
+from tracking.domain.repositories import TimeEntryRepositoryProtocol
+from tracking.domain.repositories.time_entry import TimeEntrySummary
+from tracking.infrastructure.repositories import TimeEntryRepository
+from project_management.domain.repositories import (
+    ProjectRepositoryProtocol,
+    TaskTypeRepositoryProtocol,
+)
+from project_management.infrastructure.repositories import (
+    ProjectRepository,
+    TaskTypeRepository,
+)
 
 
 class TimesheetValidationError(ValueError):
@@ -21,11 +29,33 @@ class TimesheetValidationError(ValueError):
         super().__init__(message)
 
 
+def _days_in_week(week_start: date) -> list[date]:
+    """Return [Mon, Tue, ..., Sun] for the week starting at week_start."""
+    return [week_start + timedelta(days=i) for i in range(7)]
+
+
 class TimesheetService:
     """
     Domain service for weekly timesheet aggregation and manual entry updates.
-    All ORM access for timesheet operations is centralized here.
+    Depends on TimeEntryRepository and Project/TaskType repositories for persistence.
+    Returns plain data or domain types (no ORM).
     """
+
+    def __init__(
+        self,
+        time_entry_repository: Optional[TimeEntryRepositoryProtocol] = None,
+        project_repository: Optional[ProjectRepositoryProtocol] = None,
+        task_type_repository: Optional[TaskTypeRepositoryProtocol] = None,
+    ):
+        self._time_entry_repo = (
+            time_entry_repository if time_entry_repository is not None else TimeEntryRepository()
+        )
+        self._project_repo = (
+            project_repository if project_repository is not None else ProjectRepository()
+        )
+        self._task_type_repo = (
+            task_type_repository if task_type_repository is not None else TaskTypeRepository()
+        )
 
     def get_weekly_aggregation(
         self,
@@ -34,21 +64,13 @@ class TimesheetService:
     ) -> tuple[date, list[tuple[Optional[int], Optional[int], Optional[str], Optional[str], dict[date, int]]]]:
         """
         Return aggregated time per (project, task_type) per day for the given week.
-        week_start is the Monday of the week. Uses a single optimized query (no N+1).
+        week_start is the Monday of the week. Uses repository (single optimized query).
         """
         week_end = week_start + timedelta(days=6)
-        # Single query: all entries for user in the week, with related project/task_type
-        entries = (
-            TimeEntry.objects.filter(
-                user_id=user_id,
-                started_at__date__gte=week_start,
-                started_at__date__lte=week_end,
-            )
-            .select_related("project", "task_type")
-            .order_by("project_id", "task_type_id", "started_at")
+        entries = self._time_entry_repo.get_entries_for_week(
+            user_id=user_id, week_start=week_start, week_end=week_end
         )
 
-        # (project_id, task_type_id) -> (project_name, task_type_name, day_totals)
         row_map: dict[
             tuple[Optional[int], Optional[int]],
             tuple[Optional[str], Optional[str], dict[date, int]],
@@ -60,19 +82,14 @@ class TimesheetService:
             key = (entry.project_id, entry.task_type_id)
             if key not in row_map:
                 row_map[key] = (
-                    entry.project.name if entry.project else None,
-                    entry.task_type.name if entry.task_type else None,
+                    entry.project_name,
+                    entry.task_type_name,
                     {d: 0 for d in _days_in_week(week_start)},
                 )
             _, _, day_totals = row_map[key]
-            # Update names in case we had None from a previous entry
-            pname = entry.project.name if entry.project else None
-            tname = entry.task_type.name if entry.task_type else None
-            row_map[key] = (pname, tname, day_totals)
-            entry_date = entry.started_at.date()
-            duration = entry.duration_seconds or 0
-            if entry_date in day_totals:
-                day_totals[entry_date] += duration
+            row_map[key] = (entry.project_name, entry.task_type_name, day_totals)
+            if entry.started_at_date in day_totals:
+                day_totals[entry.started_at_date] += entry.duration_seconds
 
         rows = [
             (pid, tid, pname, tname, day_totals)
@@ -82,12 +99,7 @@ class TimesheetService:
 
     def user_has_entries_in_week(self, user_id: int, week_start: date) -> bool:
         """Return True if the user has any time entries in the given week (Monday)."""
-        week_end = week_start + timedelta(days=6)
-        return TimeEntry.objects.filter(
-            user_id=user_id,
-            started_at__date__gte=week_start,
-            started_at__date__lte=week_end,
-        ).exists()
+        return self._time_entry_repo.has_entries_in_week(user_id=user_id, week_start=week_start)
 
     def update_or_create_entry(
         self,
@@ -96,19 +108,19 @@ class TimesheetService:
         project_id: Optional[int],
         task_type_id: Optional[int],
         hours: float,
-    ) -> TimeEntry:
+    ) -> TimeEntrySummary:
         """
         Set manual hours for (user, date, project, task_type). Replaces all completed
-        entries for that cell (both timer and manual) with a single manual entry, so the
-        saved total always equals exactly what the user typed.
+        entries for that cell with a single manual entry.
         Active (running) timers are left untouched.
         Validates: non-negative hours, project_id/task_type_id exist when provided.
+        Returns domain TimeEntrySummary (no ORM).
         """
         if hours < 0:
             raise TimesheetValidationError("Hours must be non-negative.", code="invalid_hours")
-        if project_id is not None and not Project.objects.filter(pk=project_id).exists():
+        if project_id is not None and not self._project_repo.exists(project_id):
             raise TimesheetValidationError("Invalid project.", code="invalid_project")
-        if task_type_id is not None and not TaskType.objects.filter(pk=task_type_id).exists():
+        if task_type_id is not None and not self._task_type_repo.exists(task_type_id):
             raise TimesheetValidationError("Invalid task type.", code="invalid_task_type")
 
         duration_seconds = max(0, int(round(hours * 3600)))
@@ -116,17 +128,14 @@ class TimesheetService:
         day_start = timezone.make_aware(
             datetime.combine(entry_date, datetime.min.time()), tz
         )
-        # Delete all completed entries for this cell (timer and manual alike) so that
-        # the new manual entry is the sole source of truth for this day/project/task.
-        # Active timers (ended_at=None) are preserved.
-        TimeEntry.objects.filter(
+
+        self._time_entry_repo.delete_completed_for_cell(
             user_id=user_id,
             project_id=project_id,
             task_type_id=task_type_id,
-            started_at__date=entry_date,
-            ended_at__isnull=False,
-        ).delete()
-        return TimeEntry.objects.create(
+            entry_date=entry_date,
+        )
+        return self._time_entry_repo.create_manual_entry(
             user_id=user_id,
             project_id=project_id,
             task_type_id=task_type_id,
@@ -134,8 +143,3 @@ class TimesheetService:
             ended_at=day_start,
             manual_duration_seconds=duration_seconds,
         )
-
-
-def _days_in_week(week_start: date) -> list[date]:
-    """Return [Mon, Tue, ..., Sun] for the week starting at week_start."""
-    return [week_start + timedelta(days=i) for i in range(7)]
