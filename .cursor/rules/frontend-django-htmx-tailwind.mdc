@@ -1,0 +1,22 @@
+---
+description: Frontend stack — Django Templates, HTMX, Tailwind; use django-htmx-tailwind skill
+globs: "**/templates/**/*.html,**/static/**/*.css,**/static/**/*.js"
+alwaysApply: false
+---
+
+# Frontend: Django Templates + HTMX + Tailwind
+
+When editing templates or frontend assets, follow the **django-htmx-tailwind** skill:
+
+- **Location:** `.cursor/skills/django-htmx-tailwind/`
+- **Use when:** Building or changing server-driven UI, partials, HTMX interactions, or Tailwind styling.
+
+Apply the skill for:
+
+- Template structure (`base.html`, `{% block %}`, `{% include %}`)
+- HTMX attributes (`hx-get`, `hx-post`, `hx-target`, `hx-swap`, `hx-trigger`)
+- Partials (e.g. `_item.html`) and returning HTML fragments from views
+- Tailwind utility classes and layout (flexbox, grid, spacing, responsive)
+- CRUD flows, modals, loading states, and delete/update patterns
+
+Reference the skill in chat with `@.cursor/skills/django-htmx-tailwind` or by name for full instructions and examples.

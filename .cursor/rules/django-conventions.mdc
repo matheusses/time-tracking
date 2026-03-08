@@ -1,0 +1,9 @@
+---
+description: Django/DRF conventions and best practices
+globs: "**/models.py,**/views.py,**/serializers.py,**/urls.py,**/admin.py"
+alwaysApply: false
+---
+
+# Django Conventions
+
+When editing these files, follow Django and Django REST Framework best practices. Consider the **django-expert** skill for models, ORM, views, DRF, security, and performance. Use `/django-expert` or `@django-expert` in Agent chat for full skill behavior.
