@@ -145,11 +145,26 @@ The codebase follows clean layering: views call use cases, use cases call domain
 
 ## Testing instructions
 
-- **Unit and integration tests**
+- **Run all tests (Django test runner)**
 
   ```bash
   python manage.py test
   ```
+
+- **Run only the core test suite** (unit, integration, functional under `core/tests/`)
+
+  ```bash
+  python manage.py test core.tests
+  ```
+
+- **Run with pytest** (optional; install `pytest-django` first)
+
+  ```bash
+  pip install pytest-django
+  pytest
+  ```
+
+  Configuration is in `pytest.ini`; test discovery includes `core/tests`, `tracking/tests`, and `project_management/tests`.
 
 - **With coverage (optional)**
 
@@ -161,7 +176,23 @@ The codebase follows clean layering: views call use cases, use cases call domain
 
 When `DATABASE_URL` and `PGPASSWORD` are not set, tests use an in-memory SQLite database so they run without a local PostgreSQL instance. With Postgres env set, tests use PostgreSQL.
 
-Tests should be added for any new or modified code (unit at minimum; integration when touching DB/APIs/auth). Run all tests with `python manage.py test` (covers `tracking` and `project_management`). See [docs/tasks/07-tests.md](docs/tasks/07-tests.md).
+Tests should be added for any new or modified code (unit at minimum; integration when touching DB/APIs/auth). See [docs/tasks/09-tests.md](docs/tasks/09-tests.md) for the test strategy and checklist.
+
+### Security test checklist (OWASP-aligned)
+
+The test suite includes security-focused tests in `core/tests/functional/test_security.py`. Checklist covered:
+
+| Area | What is tested |
+|------|-----------------|
+| **A01:2021 – Broken Access Control** | Unauthenticated access to timer/timesheet endpoints redirects to login; user data isolation (one user cannot see another’s entries). |
+| **A02:2021 – Cryptographic Failures** | Secrets and DB URLs come from environment (see Security considerations). |
+| **A05:2021 – Security Misconfiguration** | DEBUG and ALLOWED_HOSTS guidance in README and deployment checklist. |
+| **A07:2021 – Identification and Authentication Failures** | Login required for protected views; invalid credentials return error. |
+| **CSRF** | POST to timer start/stop and timesheet update without valid CSRF token returns 403. |
+| **Input validation** | Invalid date or missing required fields on timesheet update return 400; invalid project/task_type raise validation errors. |
+| **Method restrictions** | Timesheet update endpoint accepts only POST (GET returns 405). |
+
+Run security-related tests: `python manage.py test core.tests.functional.test_security`.
 
 ---
 

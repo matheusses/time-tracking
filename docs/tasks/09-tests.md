@@ -30,18 +30,18 @@ Prioritize **unit tests** (majority of coverage); then **integration tests** (DB
 
 ## Tasks — Unit tests (primary focus)
 
-- [ ] 1.0 Unit tests for TimerService: start timer (and that any active timer is stopped), stop timer, single-timer rule (only one active per user), edge cases (no project/task, invalid user)
-- [ ] 2.0 Unit tests for TimesheetService: weekly aggregation correctness, query count or structure to assert no N+1 (e.g. single query for grid data), get-or-create for manual entry
-- [ ] 3.0 Unit tests for ProjectService: list clients, list projects by client, list task types; hierarchy and filtering
-- [ ] 4.0 Unit tests for use cases: StartTimerUseCase, StopTimerUseCase, GenerateWeeklyTimesheetUseCase, UpdateTimeEntryUseCase (input validation, DTO in/out, delegation to correct service; mock services where appropriate)
-- [ ] 5.0 Unit tests for domain models: invariants, validation (e.g. hours >= 0, date in range)
+- [x] 1.0 Unit tests for TimerService: start timer (and that any active timer is stopped), stop timer, single-timer rule (only one active per user), edge cases (no project/task, invalid user)
+- [x] 2.0 Unit tests for TimesheetService: weekly aggregation correctness, query count or structure to assert no N+1 (e.g. single query for grid data), get-or-create for manual entry
+- [x] 3.0 Unit tests for ProjectService: list clients, list projects by client, list task types; hierarchy and filtering
+- [x] 4.0 Unit tests for use cases: StartTimerUseCase, StopTimerUseCase, GenerateWeeklyTimesheetUseCase, UpdateTimeEntryUseCase (input validation, DTO in/out, delegation to correct service; mock services where appropriate)
+- [x] 5.0 Unit tests for domain models: invariants, validation (e.g. hours >= 0, date in range)
 
 ## Tasks — Integration tests
 
-- [ ] 6.0 Integration tests: timer flow with real DB (start → stop → assert entry and duration); weekly timesheet with real DB and assert query count for N+1; project/client/task-type CRUD via service
-- [ ] 7.0 Integration tests: auth/permissions (authenticated vs anonymous, user can only see own data) and transaction boundaries where relevant
+- [x] 6.0 Integration tests: timer flow with real DB (start → stop → assert entry and duration); weekly timesheet with real DB and assert query count for N+1; project/client/task-type CRUD via service
+- [x] 7.0 Integration tests: auth/permissions (authenticated vs anonymous, user can only see own data) and transaction boundaries where relevant
 
 ## Tasks — Functional tests
 
-- [ ] 8.0 Functional tests: HTMX start/stop timer (client requests, assert partial HTML and status codes); week navigation (change week, assert grid content); inline edit (submit value, assert response and optional follow-up fetch)
-- [ ] 9.0 Functional tests: security and negative cases (invalid CSRF, invalid payloads, unauthorized access); document in README and align with OWASP
+- [x] 8.0 Functional tests: HTMX start/stop timer (client requests, assert partial HTML and status codes); week navigation (change week, assert grid content); inline edit (submit value, assert response and optional follow-up fetch)
+- [x] 9.0 Functional tests: security and negative cases (invalid CSRF, invalid payloads, unauthorized access); document in README and align with OWASP
