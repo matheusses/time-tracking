@@ -1,15 +1,12 @@
 """
-Timer views and HTMX endpoints. No business logic; call use cases only.
+Timer views and HTMX endpoints. No business logic; call clients from DI only.
 """
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
-from project_management.use_cases.get_timer_options import execute as get_timer_options
 from tracking.application.dtos import StartTimerInputDTO, StopTimerInputDTO
-from tracking.use_cases.get_active_timer import execute as get_active_timer
-from tracking.use_cases.start_timer import execute as start_timer_uc
-from tracking.use_cases.stop_timer import execute as stop_timer_uc
+from tracking.views._clients import pm_client, track_client
 
 TIMER_PARTIAL = "tracking/_timer_partial.html"
 
@@ -17,8 +14,8 @@ TIMER_PARTIAL = "tracking/_timer_partial.html"
 @login_required
 def timer_partial(request: HttpRequest) -> HttpResponse:
     """Return the timer UI fragment (GET). Used for initial load or HTMX refresh."""
-    active = get_active_timer(request.user.id)
-    timer_options = get_timer_options(
+    active = track_client.get_active_timer(request.user.id)
+    timer_options = pm_client.get_timer_options(
         user_id=request.user.id,
         is_staff=request.user.is_staff,
     )
@@ -50,8 +47,8 @@ def start_timer(request: HttpRequest) -> HttpResponse:
         project_id=project_id,
         task_type_id=task_type_id,
     )
-    result = start_timer_uc(dto)
-    timer_options = get_timer_options(
+    result = track_client.start_timer(dto)
+    timer_options = pm_client.get_timer_options(
         user_id=request.user.id,
         is_staff=request.user.is_staff,
     )
@@ -70,8 +67,8 @@ def start_timer(request: HttpRequest) -> HttpResponse:
 def stop_timer(request: HttpRequest) -> HttpResponse:
     """HTMX POST: stop the active timer. Returns timer partial HTML."""
     dto = StopTimerInputDTO(user_id=request.user.id)
-    result = stop_timer_uc(dto)
-    timer_options = get_timer_options(
+    result = track_client.stop_timer(dto)
+    timer_options = pm_client.get_timer_options(
         user_id=request.user.id,
         is_staff=request.user.is_staff,
     )

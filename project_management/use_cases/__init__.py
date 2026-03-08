@@ -1,1 +1,2 @@
-"""Use cases for listing clients, projects, and task types (scoped by user's client)."""
+# Use cases have been replaced by ProjectManagementClient (project_management.application.clients).
+# Obtain the client via core.di.get_project_management_client().

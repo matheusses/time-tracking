@@ -1,13 +1,11 @@
 """
 Presentation layer: Django views and HTMX endpoints.
-No business logic; no direct ORM. Calls Application Layer (use_cases) only.
+No business logic; no direct ORM. Calls Application Layer (clients from DI) only.
 """
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from project_management.use_cases.get_timer_options import execute as get_timer_options
-from tracking.use_cases.get_active_timer import execute as get_active_timer
-
+from ._clients import pm_client, track_client
 from .timer_views import start_timer, stop_timer, timer_partial
 from .timesheet_views import (
     get_week_context_for_user,
@@ -24,8 +22,8 @@ def home(request):
         next_url = reverse("tracking:home")
         return redirect(f"{login_url}?next={next_url}")
 
-    active_timer = get_active_timer(request.user.id)
-    timer_options = get_timer_options(
+    active_timer = track_client.get_active_timer(request.user.id)
+    timer_options = pm_client.get_timer_options(
         user_id=request.user.id,
         is_staff=request.user.is_staff,
     )

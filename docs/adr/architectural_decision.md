@@ -36,8 +36,14 @@ flowchart TD
         Templates
     end
 
+    subgraph DI [DI Container]
+        get_track_client
+        get_pm_client[get_project_management_client]
+    end
+
     subgraph Application Layer
-        UseCase
+        TrackClient
+        ProjectManagementClient
         DTO
     end
 
@@ -55,11 +61,16 @@ flowchart TD
         PostgreSQL[(PostgreSQL)]
     end
 
-    DjangoView --> UseCase
-    UseCase --> DTO
-    UseCase --> TimerService
-    UseCase --> TimesheetService
-    UseCase --> ProjectService
+    DjangoView -->|"obtain clients"| DI
+    DI --> TrackClient
+    DI --> ProjectManagementClient
+    DjangoView --> TrackClient
+    DjangoView --> ProjectManagementClient
+    TrackClient --> DTO
+    ProjectManagementClient --> DTO
+    TrackClient --> TimerService
+    TrackClient --> TimesheetService
+    ProjectManagementClient --> ProjectService
 
     TimerService -->|DTO| Repo
     TimesheetService -->|DTO| Repo
@@ -70,6 +81,13 @@ flowchart TD
     DAO --> DjangoORM
     DjangoORM --> PostgreSQL
 ```
+
+**Dependency injection (DI):** A central DI container (`core.di`) provides
+repository and client instances. Views obtain **clients** via
+`get_track_client()` and `get_project_management_client()`; they do not
+instantiate use cases or services directly. All communication between layers
+uses **interfaces** (Protocols): repository protocols in the domain,
+client protocols in the application layer.
 
 ------------------------------------------------------------------------
 
@@ -89,31 +107,30 @@ flowchart TD
 
 -   ❌ No business logic
 -   ❌ No direct ORM access
--   ✅ Only communicates with Application Layer (UseCases)
+-   ✅ Only communicates with Application Layer via **clients** (obtained from DI)
+-   ✅ Only the client may be called directly from the view; views have no direct access to services or repositories
 
 ------------------------------------------------------------------------
 
-## 2. Application Layer (Use Cases)
+## 2. Application Layer (Clients)
 
 **Responsibilities:**
 
--   Orchestrates domain services
--   Defines transaction boundaries
--   Converts request input into DTOs
--   Coordinates workflows
+-   **Clients** are the single entry point for each module (e.g. `TrackClient`, `ProjectManagementClient`). Each client implements a Protocol (e.g. `TrackClientInterface`).
+-   Clients orchestrate domain services and convert input/output to DTOs.
+-   Cross-module calls use client interfaces (e.g. `TrackClient` depends on `ProjectManagementClientInterface` for listing projects/task types in the weekly timesheet).
 
 **Rules:**
 
--   Services do NOT communicate directly with each other
--   Each use case is independent
--   No direct database access
--   Calls Domain Services only
+-   Views obtain clients from the DI container (`core.di.get_track_client()`, `core.di.get_project_management_client()`); they do not instantiate services or use cases.
+-   Communication between layers is via **interfaces** (Repository protocols, Client protocols).
+-   Clients call Domain Services only; services do not call each other.
+-   No direct database access in clients (all persistence via services and repositories).
 
-Example:
+Example clients:
 
--   StartTimerUseCase
--   StopTimerUseCase
--   GenerateWeeklyTimesheetUseCase
+-   **TrackClient:** `start_timer`, `stop_timer`, `get_active_timer`, `generate_weekly_timesheet`, `update_time_entry`, `has_entries_in_week`
+-   **ProjectManagementClient:** `get_timer_options`, `list_projects`, `list_clients`, `list_task_types`
 
 ------------------------------------------------------------------------
 
@@ -192,7 +209,7 @@ Services call repositories/DAOs; they do not use `Model.objects` or QuerySets.
 Not allowed in:
 
 -   Views
--   Use Cases
+-   Clients (application layer)
 -   Domain Models
 -   Domain Services (services orchestrate and call repositories; they do not touch ORM directly)
 
@@ -209,13 +226,13 @@ This guarantees:
 
 1.  User clicks "Start Timer" (HTMX request)
 2.  Django View receives request
-3.  View calls StartTimerUseCase
-4.  UseCase validates input and creates DTO
-5.  UseCase calls TimerService (DTO in)
+3.  View obtains `TrackClient` from DI (`get_track_client()`)
+4.  View builds input DTO and calls `track_client.start_timer(dto)`
+5.  TrackClient calls TimerService (DTO in)
 6.  TimerService:
     -   Calls TimeEntryRepository to stop any existing active timer and create a new entry
     -   Returns domain value object (TimerResult with ActiveTimerState); no ORM in signature
-7.  Response (DTO/value object) returned to View
+7.  Response (TimerResult) returned to View via client
 8.  View renders partial template
 
 ------------------------------------------------------------------------

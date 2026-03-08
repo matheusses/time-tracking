@@ -1,5 +1,5 @@
 """
-Timesheet views and HTMX endpoints. No business logic; call use cases only.
+Timesheet views and HTMX endpoints. No business logic; call clients from DI only.
 Supports weekly grid, week navigation (prev/next), and inline cell edit.
 """
 from datetime import date, timedelta
@@ -10,9 +10,7 @@ from django.shortcuts import redirect, render
 
 from tracking.application.dtos import UpdateTimeEntryInputDTO
 from tracking.domain.services.timesheet_service import TimesheetValidationError
-from tracking.use_cases.generate_weekly_timesheet import execute as generate_weekly_timesheet
-from tracking.use_cases.has_entries_in_week import execute as has_entries_in_week
-from tracking.use_cases.update_time_entry import execute as update_time_entry_uc
+from tracking.views._clients import track_client
 
 TIMESHEET_PAGE = "tracking/timesheet.html"
 TIMESHEET_GRID_PARTIAL = "tracking/_timesheet_grid.html"
@@ -50,7 +48,7 @@ def get_week_context_for_user(
     """Build context dict for weekly timesheet (timesheet, week_days, nav params)."""
     if week_start is None:
         week_start = _monday_of_week(date.today())
-    timesheet = generate_weekly_timesheet(
+    timesheet = track_client.generate_weekly_timesheet(
         user_id=user_id, week_start=week_start, is_staff=is_staff
     )
     week_days = _week_range(week_start)
@@ -62,8 +60,8 @@ def get_week_context_for_user(
     next_param = f"{next_week.isocalendar()[0]}-W{next_week.isocalendar()[1]:02d}"
     current_week_start = _monday_of_week(date.today())
     # Only show/enable prev/next when there is data in that week
-    prev_enabled = has_entries_in_week(user_id, prev_week)
-    next_enabled = has_entries_in_week(user_id, next_week)
+    prev_enabled = track_client.has_entries_in_week(user_id, prev_week)
+    next_enabled = track_client.has_entries_in_week(user_id, next_week)
     return {
         "timesheet": timesheet,
         "week_days": week_days,
@@ -152,7 +150,7 @@ def update_time_entry(request: HttpRequest) -> HttpResponse:
         hours=hours,
     )
     try:
-        update_time_entry_uc(dto)
+        track_client.update_time_entry(dto)
     except TimesheetValidationError as e:
         # Return cell partial with error so HTMX still swaps and user sees the message
         return render(
@@ -170,7 +168,7 @@ def update_time_entry(request: HttpRequest) -> HttpResponse:
 
     # Re-fetch timesheet to get updated totals for that row/day
     week_start = _monday_of_week(entry_date)
-    timesheet = generate_weekly_timesheet(
+    timesheet = track_client.generate_weekly_timesheet(
         user_id=request.user.id,
         week_start=week_start,
         is_staff=request.user.is_staff,
