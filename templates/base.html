@@ -49,10 +49,29 @@
 
     document.body.addEventListener('click', function(e) {
       if (e.target.id === 'timesheet-save-all') {
+        var btn = e.target;
         var container = document.getElementById('timesheet-grid-container');
         if (!container) return;
-        container.querySelectorAll('form').forEach(function(f) { f.requestSubmit(); });
-        setTimeout(refreshTimesheetGrid, 1500);
+        var forms = Array.from(container.querySelectorAll('form'));
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+        if (forms.length === 0) {
+          refreshTimesheetGrid();
+          return;
+        }
+        var pending = forms.length;
+        var submittedForms = new Set(forms);
+        function onAfterRequest(evt) {
+          if (submittedForms.has(evt.detail.elt)) {
+            pending--;
+            if (pending <= 0) {
+              document.body.removeEventListener('htmx:afterRequest', onAfterRequest);
+              refreshTimesheetGrid();
+            }
+          }
+        }
+        document.body.addEventListener('htmx:afterRequest', onAfterRequest);
+        forms.forEach(function(f) { f.requestSubmit(); });
       }
     });
 

@@ -19,7 +19,11 @@ SECRET_KEY = os.environ.get(
     "django-insecure-CHANGE-ME-in-production-use-env",
 )
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() in ("1", "true", "yes")
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0").split(",")
+    if h.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -28,6 +32,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_extensions",
     "core",
     "project_management",
     "tracking",
@@ -122,3 +127,25 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
+
+# Django extensions
+# Always use IPython for shell_plus
+SHELL_PLUS = "ipython"
+SHELL_PLUS_PRINT_SQL = True
+
+# Truncate sql queries to this number of characters (this is the default)
+SHELL_PLUS_PRINT_SQL_TRUNCATE = 1000
+
+# To disable truncation of sql queries use
+SHELL_PLUS_PRINT_SQL_TRUNCATE = None
+
+# Specify sqlparse configuration options when printing sql queries to the console
+SHELL_PLUS_SQLPARSE_FORMAT_KWARGS = dict(
+  reindent_aligned=True,
+  truncate_strings=500,
+)
+
+# Specify Pygments formatter and configuration options when printing sql queries to the console
+import pygments.formatters
+SHELL_PLUS_PYGMENTS_FORMATTER = pygments.formatters.TerminalFormatter
+SHELL_PLUS_PYGMENTS_FORMATTER_KWARGS = {}

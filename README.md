@@ -86,6 +86,18 @@ The codebase follows clean layering: views call use cases, use cases call domain
   - **Using Docker for Postgres:** Start the DB with `docker compose up -d db` (or `docker compose -f docker-compose-debug.yml up -d db`). Ensure `.env` has `PGPASSWORD=postgres` (or the same value you used when the volume was first created). If you changed the password after creating the volume, either use the original password in `.env` or recreate the volume: `docker compose down -v` then `docker compose up -d db`.  
   - **Using a local PostgreSQL:** Set in `.env` the same password the `postgres` user has (e.g. `DATABASE_URL=postgresql://postgres:YOUR_ACTUAL_PASSWORD@localhost:5432/timetracking` or `PGPASSWORD=YOUR_ACTUAL_PASSWORD`). To change the DB user password: `psql -U postgres -c "ALTER USER postgres PASSWORD 'postgres';"` (or your chosen password).
 
+- **`Unknown command: 'shell_plus'`**  
+  `shell_plus` is provided by `django-extensions`. Ensure your environment is up to date and the app is registered:
+  1. Activate your venv and run `pip install -r requirements.txt`
+  2. Confirm `"django_extensions"` is present in `INSTALLED_APPS` in `project/settings.py`
+  3. Retry: `python manage.py shell_plus`
+
+- **`CommandError: Could not load shell runner: 'IPython'`**  
+  You requested the IPython runner (`python manage.py shell_plus --ipython`), but `IPython` is not installed in your virtual environment.
+  1. Activate your venv and run `pip install -r requirements.txt` (or `pip install ipython`)
+  2. Retry: `python manage.py shell_plus --ipython`
+  3. If you just need a shell quickly, run `python manage.py shell_plus` without `--ipython`
+
 ---
 
 ## Core time tracking (single-timer rule)
@@ -101,7 +113,7 @@ The codebase follows clean layering: views call use cases, use cases call domain
 - **Routes**: Embedded on the **home page** (`/`) and standalone at **`/timesheet/`** (optional `?week=YYYY-Www`, e.g. `2025-W10`). Requires login.
 - **Behavior**: One optimized query loads all time entries for the week; grid shows rows (project × task type) and columns (Mon–Sun). Previous/Next week use HTMX to swap only the grid (no full-page reload). The grid is **read-only by default**; click **Edit** to enable inline editing, then **Save** (persist and return to read-only) or **Cancel** (discard and return to read-only). In edit mode, each cell is an inline-editable hours field; on change, HTMX POSTs to `/timesheet/update/` and the cell is replaced with the updated value.
 - **Manual hours**: Time entries can have an optional `manual_duration_seconds` (e.g. for manual log or adjustment). Timer entries and manual entries for the same (user, date, project, task) are summed in the cell.
-- **Manual entry**: The grid includes a row for every (project × task type) combination (from the user’s available projects and global task types), so users can add hours in any cell even when no entry exists for that day; submitting creates a new manual time entry. Editing an existing cell updates the manual entry or creates one. See [Manual entry and validation](docs/manual-entry.md).
+- **Manual entry**: The grid includes a row for every (project × task type) combination (from the user’s available projects and global task types), so users can add hours in any cell even when no entry exists for that day; submitting creates a new manual time entry. Editing an existing cell updates the manual entry or creates one.
 - **Validation**: Hours must be non-negative; `project_id` and `task_type_id` (when provided) must exist. Invalid input returns the same cell partial with an error message (no full-page reload).
 - **Layers**: `tracking.views.timesheet_views` → `GenerateWeeklyTimesheetUseCase` / `UpdateTimeEntryUseCase` → `TimesheetService` → ORM.
 

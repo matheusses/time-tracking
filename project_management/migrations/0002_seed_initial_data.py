@@ -1,8 +1,13 @@
+import sys
+
 from django.contrib.auth.hashers import make_password
 from django.db import migrations
 
 
-def seed_initial_data(apps, schema_editor):
+def seed_initial_data(apps, _schema_editor):
+    if "test" in sys.argv:
+        return
+
     User = apps.get_model("auth", "User")
     Client = apps.get_model("project_management", "Client")
     UserProfile = apps.get_model("project_management", "UserProfile")
@@ -48,7 +53,7 @@ def seed_initial_data(apps, schema_editor):
         TaskType.objects.get_or_create(name=task_name)
 
 
-def reverse_seed(apps, schema_editor):
+def reverse_seed(_apps, _schema_editor):
     pass  # noop — seed data is not removed on rollback
 
 
