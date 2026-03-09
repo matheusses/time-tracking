@@ -12,7 +12,8 @@ from tracking.domain.services.timesheet_service import (
     TimesheetValidationError,
     _days_in_week,
 )
-from tracking.models import TimeEntry
+from tracking.infrastructure.repositories import TimerActionRepository
+from tracking.models import TimeEntry, TimerAction
 from tracking.tests.factories import (
     ProjectFactory,
     TaskTypeFactory,
@@ -194,6 +195,28 @@ class TimesheetServiceUpdateOrCreateTests(TestCase):
                 hours=-1.0,
             )
         self.assertIn("non-negative", str(cm.exception))
+
+    def test_manual_entry_appends_timer_action_manual_with_value(self):
+        """When TimerActionRepository is injected, update_or_create_entry appends action=manual and value=duration_seconds."""
+        service = TimesheetService(timer_action_repository=TimerActionRepository())
+        summary = service.update_or_create_entry(
+            user_id=self.user.id,
+            entry_date=self.entry_date,
+            project_id=self.project.id,
+            task_type_id=self.task.id,
+            hours=1.5,
+        )
+        self.assertEqual(summary.manual_duration_seconds, 5400)  # 1.5 * 3600
+        actions = list(
+            TimerAction.objects.filter(
+                user=self.user, action=TimerAction.Action.MANUAL
+            ).order_by("-occurred_at")
+        )
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0].value, 5400)
+        self.assertEqual(actions[0].time_entry_id, summary.id)
+        self.assertEqual(actions[0].project_id, self.project.id)
+        self.assertEqual(actions[0].task_type_id, self.task.id)
 
 
 class UserHasEntriesInWeekTests(TestCase):

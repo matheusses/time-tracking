@@ -21,11 +21,11 @@ class TimerActionRepository:
         time_entry_id: Optional[int] = None,
         project_id: Optional[int] = None,
         task_type_id: Optional[int] = None,
+        value: Optional[int] = None,
     ) -> None:
         """Append one timer action event. Never updates or deletes.
-        time_entry_id links this event to the TimeEntry that was started or stopped.
+        time_entry_id links this event to the TimeEntry. value used for manual (duration_seconds).
         """
-        # Set time_entry FK so tracking_timeraction.time_entry_id is populated
         time_entry = None
         if time_entry_id is not None:
             time_entry = TimeEntry.objects.filter(pk=time_entry_id).first()
@@ -36,4 +36,5 @@ class TimerActionRepository:
             time_entry=time_entry,
             project_id=project_id,
             task_type_id=task_type_id,
+            value=value,
         )

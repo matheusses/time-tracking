@@ -20,9 +20,10 @@ class TimerActionRepositoryProtocol(Protocol):
         time_entry_id: Optional[int] = None,
         project_id: Optional[int] = None,
         task_type_id: Optional[int] = None,
+        value: Optional[int] = None,
     ) -> None:
         """
-        Append one timer action event (start or stop). No return value.
-        Never updates or deletes existing rows.
+        Append one timer action event (start, stop, or manual). No return value.
+        value is used for manual actions (duration_seconds). Never updates or deletes existing rows.
         """
         ...

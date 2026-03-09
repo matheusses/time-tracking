@@ -1,7 +1,8 @@
 """
 Integration tests: timer flow with real DB (start → stop → assert entry and duration).
+Manual entry via update_time_entry creates TimerAction with action=manual and value.
 """
-from datetime import timedelta
+from datetime import date, timedelta
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -13,7 +14,11 @@ from core.tests.factories import (
     task_type_factory,
     user_factory,
 )
-from tracking.application.dtos import StartTimerInputDTO, StopTimerInputDTO
+from tracking.application.dtos import (
+    StartTimerInputDTO,
+    StopTimerInputDTO,
+    UpdateTimeEntryInputDTO,
+)
 from tracking.models import TimeEntry, TimerAction
 
 
@@ -85,3 +90,33 @@ class TimerFlowIntegrationTests(TestCase):
         )
         self.assertEqual(stop_actions.count(), 1)
         self.assertEqual(stop_actions.get().time_entry_id, entry.id)
+
+
+class ManualEntryTimerActionIntegrationTests(TestCase):
+    """update_time_entry (manual) creates a TimerAction with action=manual and value=duration_seconds."""
+
+    def setUp(self):
+        self.user = user_factory()
+        self.client = get_track_client()
+        self.project = project_factory(name="Manual Project")
+        self.task_type = task_type_factory(name="Manual Task")
+
+    def test_update_time_entry_creates_timer_action_manual_with_value(self):
+        dto = UpdateTimeEntryInputDTO(
+            user_id=self.user.id,
+            date=date(2025, 3, 5),
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            hours=2.0,
+        )
+        result = self.client.update_time_entry(dto)
+        self.assertEqual(result.manual_duration_seconds, 7200)
+        actions = TimerAction.objects.filter(
+            user=self.user, action=TimerAction.Action.MANUAL
+        )
+        self.assertEqual(actions.count(), 1)
+        action = actions.get()
+        self.assertEqual(action.value, 7200)
+        self.assertEqual(action.time_entry_id, result.id)
+        self.assertEqual(action.project_id, self.project.id)
+        self.assertEqual(action.task_type_id, self.task_type.id)

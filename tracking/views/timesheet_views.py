@@ -22,11 +22,11 @@ def _parse_week_param(value: str | None) -> date | None:
     if not value or not value.strip():
         return None
     value = value.strip()
-    if len(value) == 10 and value[4] == "-" and value[7] == "-":
-        # YYYY-Www
+    # YYYY-Www is 8 chars (e.g. 2025-W09). strptime %G-W%V requires a weekday; use -1 for Monday.
+    if len(value) >= 8 and value[4] == "-" and value[5] == "W":
         try:
             from datetime import datetime
-            return datetime.strptime(value, "%G-W%V").date()
+            return datetime.strptime(value[:8] + "-1", "%G-W%V-%u").date()
         except ValueError:
             return None
     return None
@@ -49,7 +49,10 @@ def get_week_context_for_user(
     if week_start is None:
         week_start = _monday_of_week(date.today())
     timesheet = track_client.generate_weekly_timesheet(
-        user_id=user_id, week_start=week_start, is_staff=is_staff
+        user_id=user_id,
+        week_start=week_start,
+        is_staff=is_staff,
+        include_empty_rows=False,
     )
     week_days = _week_range(week_start)
     prev_week = week_start - timedelta(days=7)
@@ -59,9 +62,10 @@ def get_week_context_for_user(
     prev_param = f"{prev_week.isocalendar()[0]}-W{prev_week.isocalendar()[1]:02d}"
     next_param = f"{next_week.isocalendar()[0]}-W{next_week.isocalendar()[1]:02d}"
     current_week_start = _monday_of_week(date.today())
-    # Only show/enable prev/next when there is data in that week
-    prev_enabled = track_client.has_entries_in_week(user_id, prev_week)
-    next_enabled = track_client.has_entries_in_week(user_id, next_week)
+    # Previous: always enabled so users can add/edit past weeks.
+    prev_enabled = True
+    # Next: only up to current week (no future weeks).
+    next_enabled = next_week <= current_week_start
     return {
         "timesheet": timesheet,
         "week_days": week_days,
@@ -172,6 +176,7 @@ def update_time_entry(request: HttpRequest) -> HttpResponse:
         user_id=request.user.id,
         week_start=week_start,
         is_staff=request.user.is_staff,
+        include_empty_rows=False,
     )
     week_days = _week_range(week_start)
     # Find the row and day for the cell

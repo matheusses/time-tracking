@@ -32,25 +32,31 @@
     </main>
     {% block extra_scripts %}{% endblock %}
     <script>
+    function refreshTimesheetGrid() {
+      var container = document.getElementById('timesheet-grid-container');
+      if (!container) return;
+      var wrapper = container.querySelector('[data-week]');
+      var week = wrapper ? wrapper.getAttribute('data-week') : '';
+      var baseUrl = document.body.getAttribute('data-timesheet-grid-url') || '';
+      if (baseUrl && week) {
+        var sep = baseUrl.indexOf('?') !== -1 ? '&' : '?';
+        htmx.ajax('get', baseUrl + sep + 'week=' + encodeURIComponent(week) + '&editable=0', {
+          target: '#timesheet-grid-container',
+          swap: 'innerHTML'
+        });
+      }
+    }
+
     document.body.addEventListener('click', function(e) {
       if (e.target.id === 'timesheet-save-all') {
         var container = document.getElementById('timesheet-grid-container');
         if (!container) return;
         container.querySelectorAll('form').forEach(function(f) { f.requestSubmit(); });
-        var wrapper = container.querySelector('[data-week]');
-        var week = wrapper ? wrapper.getAttribute('data-week') : '';
-        var baseUrl = document.body.getAttribute('data-timesheet-grid-url') || '';
-        if (baseUrl && week) {
-          var sep = baseUrl.indexOf('?') !== -1 ? '&' : '?';
-          setTimeout(function() {
-            htmx.ajax('get', baseUrl + sep + 'week=' + encodeURIComponent(week) + '&editable=0', {
-              target: '#timesheet-grid-container',
-              swap: 'innerHTML'
-            });
-          }, 1500);
-        }
+        setTimeout(refreshTimesheetGrid, 1500);
       }
     });
+
+    document.body.addEventListener('timesheetGridRefresh', refreshTimesheetGrid);
     </script>
 </body>
 </html>

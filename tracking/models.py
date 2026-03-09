@@ -67,6 +67,7 @@ class TimerAction(models.Model):
     class Action(models.TextChoices):
         START = "start", "Start"
         STOP = "stop", "Stop"
+        MANUAL = "manual", "Manual"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -75,6 +76,8 @@ class TimerAction(models.Model):
     )
     action = models.CharField(max_length=10, choices=Action.choices)
     occurred_at = models.DateTimeField()
+    # For manual actions: duration in seconds (manual_duration_seconds).
+    value = models.PositiveIntegerField(null=True, blank=True)
     time_entry = models.ForeignKey(
         TimeEntry,
         on_delete=models.SET_NULL,

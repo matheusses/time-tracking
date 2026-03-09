@@ -1,7 +1,7 @@
 """
 Functional tests: HTMX start/stop timer (partial HTML and status), week navigation, inline edit.
 """
-from datetime import date
+from datetime import date, timedelta
 
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -10,6 +10,10 @@ from core.tests.factories import (
     project_factory,
     task_type_factory,
     user_factory,
+)
+from tracking.views.timesheet_views import (
+    _monday_of_week,
+    get_week_context_for_user,
 )
 
 
@@ -99,6 +103,61 @@ class HTMXWeekNavigationFunctionalTests(TestCase):
         self.assertIn("timesheet", response.context)
         self.assertIn("week_days", response.context)
         self.assertIn("week_start", response.context)
+
+    def test_week_nav_previous_always_visible(self):
+        """Previous button is always enabled so users can add/edit past weeks."""
+        self.client.force_login(self.user)
+        current_monday = _monday_of_week(date.today())
+        year, week_num, _ = current_monday.isocalendar()
+        param = f"{year}-W{week_num:02d}"
+        response = self.client.get(
+            reverse("tracking:timesheet_grid"),
+            {"week": param},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["prev_enabled"])
+        self.assertIn("Previous", response.content.decode())
+
+    def test_week_nav_next_disabled_for_current_week(self):
+        """Next button is disabled when viewing current week (no future weeks)."""
+        self.client.force_login(self.user)
+        current_monday = _monday_of_week(date.today())
+        year, week_num, _ = current_monday.isocalendar()
+        param = f"{year}-W{week_num:02d}"
+        response = self.client.get(
+            reverse("tracking:timesheet_grid"),
+            {"week": param},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["next_enabled"])
+        # Next link should not appear in nav when next_enabled is False
+        content = response.content.decode()
+        self.assertIn("Week of", content)
+        # Template only renders Next when next_enabled; no "Next →" when disabled
+        self.assertNotIn("Next →", content)
+
+    def test_week_nav_next_enabled_for_past_week(self):
+        """Next button is enabled when viewing a past week (navigate up to current)."""
+        self.client.force_login(self.user)
+        current_monday = _monday_of_week(date.today())
+        past_monday = current_monday - timedelta(days=14)
+        # Test context logic directly (avoids dependency on week param parsing in GET)
+        context = get_week_context_for_user(
+            self.user.id, self.user.is_staff, week_start=past_monday
+        )
+        self.assertTrue(
+            context["next_enabled"],
+            "next_enabled should be True when viewing a past week",
+        )
+        # Also verify via HTTP: request grid with week param
+        year, week_num, _ = past_monday.isocalendar()
+        param = f"{year}-W{week_num:02d}"
+        response = self.client.get(
+            reverse("tracking:timesheet_grid"),
+            {"week": param},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Next →", response.content.decode())
 
 
 class HTMXInlineEditFunctionalTests(TestCase):

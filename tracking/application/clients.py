@@ -81,6 +81,7 @@ class TrackClient:
         )
         self._timesheet_service = TimesheetService(
             time_entry_repository=time_entry_repository,
+            timer_action_repository=timer_action_repository,
             project_task_type_validator=project_management_client,
         )
         self._project_management_client = project_management_client

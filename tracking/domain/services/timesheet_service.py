@@ -4,12 +4,12 @@ DTO in, DTO/domain out. All persistence via TimeEntryRepository (no ORM in servi
 Validation of project/task_type uses the upstream client contract (no cross-module repository calls).
 """
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone as dt_utc
 from typing import Optional
 
 from django.utils import timezone
 
-from tracking.domain.repositories import TimeEntryRepositoryProtocol
+from tracking.domain.repositories import TimeEntryRepositoryProtocol, TimerActionRepositoryProtocol
 from tracking.domain.repositories.time_entry import TimeEntrySummary
 from tracking.domain.services.timer_service import ProjectTaskTypeValidatorProtocol
 from tracking.infrastructure.repositories import TimeEntryRepository
@@ -38,11 +38,13 @@ class TimesheetService:
     def __init__(
         self,
         time_entry_repository: Optional[TimeEntryRepositoryProtocol] = None,
+        timer_action_repository: Optional[TimerActionRepositoryProtocol] = None,
         project_task_type_validator: Optional[ProjectTaskTypeValidatorProtocol] = None,
     ):
         self._time_entry_repo = (
             time_entry_repository if time_entry_repository is not None else TimeEntryRepository()
         )
+        self._action_repo = timer_action_repository
         self._validator = project_task_type_validator
 
     def get_weekly_aggregation(
@@ -117,9 +119,9 @@ class TimesheetService:
                 raise TimesheetValidationError("Invalid task type.", code="invalid_task_type")
 
         duration_seconds = max(0, int(round(hours * 3600)))
-        tz = timezone.get_current_timezone()
+        # Store datetimes in UTC in the database (midnight on entry_date in UTC)
         day_start = timezone.make_aware(
-            datetime.combine(entry_date, datetime.min.time()), tz
+            datetime.combine(entry_date, datetime.min.time()), dt_utc.utc
         )
 
         self._time_entry_repo.delete_completed_for_cell(
@@ -128,7 +130,7 @@ class TimesheetService:
             task_type_id=task_type_id,
             entry_date=entry_date,
         )
-        return self._time_entry_repo.create_manual_entry(
+        summary = self._time_entry_repo.create_manual_entry(
             user_id=user_id,
             project_id=project_id,
             task_type_id=task_type_id,
@@ -136,3 +138,14 @@ class TimesheetService:
             ended_at=day_start,
             manual_duration_seconds=duration_seconds,
         )
+        if self._action_repo is not None:
+            self._action_repo.append(
+                user_id=user_id,
+                action="manual",
+                occurred_at=day_start,
+                time_entry_id=summary.id,
+                project_id=project_id,
+                task_type_id=task_type_id,
+                value=duration_seconds,
+            )
+        return summary

@@ -89,7 +89,7 @@ def stop_timer(request: HttpRequest) -> HttpResponse:
         user_id=request.user.id,
         is_staff=request.user.is_staff,
     )
-    return render(
+    response = render(
         request,
         TIMER_PARTIAL,
         {
@@ -99,3 +99,6 @@ def stop_timer(request: HttpRequest) -> HttpResponse:
             "timer_options": timer_options,
         },
     )
+    # Refresh the weekly timesheet grid so the new entry appears
+    response["HX-Trigger"] = "timesheetGridRefresh"
+    return response

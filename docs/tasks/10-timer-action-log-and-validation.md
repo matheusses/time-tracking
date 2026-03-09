@@ -25,7 +25,7 @@
 
 ## Design Summary
 
-- **TimerAction**: Event-sourced table; insert-only (no update, no delete). One row per start or stop event.
+- **TimerAction**: Event-sourced table; insert-only (no update, no delete). One row per start, stop, or manual event. Actions: `start`, `stop`, `manual`. For `manual`, the optional `value` field stores `manual_duration_seconds` (duration in seconds).
 - **TimeEntry**: Unchanged role (current/last state); project and task_type become required (non-null) after migration.
 - **start_timer**: Requires user_id, project_id, task_type_id; validates project/task_type exist; raises TimerValidationError on failure.
 - **Migration**: Create TimerAction; delete all TimeEntry rows; alter TimeEntry to non-null project/task_type.
@@ -39,3 +39,4 @@
 - [ ] 5.0 Logging: TimerService start/stop call action-log repository after DB updates
 - [ ] 6.0 View + client: catch TimerValidationError and render timer partial with message
 - [ ] 7.0 Tests: unit (validation + action log), integration (timer flow + TimerAction rows), functional (HTMX start validation errors)
+- [ ] 8.0 Manual entry logging: TimerAction action=`manual` and `value` (duration_seconds); TimesheetService calls action repo after create_manual_entry; migration 0005 adds MANUAL choice and value field.

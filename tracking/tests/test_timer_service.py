@@ -30,13 +30,16 @@ class TimerServiceStartTests(TestCase):
         self.project = ProjectFactory(name="Test Project")
         self.task_type = TaskTypeFactory(name="Development")
 
-    def test_start_creates_active_entry(self):
+    def test_start_creates_active_entry_and_never_sets_ended_at(self):
+        """Start sets started_at only; ended_at must remain None until stop."""
         result = _start_with_project_task(
             self.service, self.user.id, self.project, self.task_type
         )
         self.assertTrue(result.success)
         self.assertIsNotNone(result.active_timer)
         self.assertEqual(TimeEntry.objects.filter(user=self.user, ended_at__isnull=True).count(), 1)
+        entry = TimeEntry.objects.get(user=self.user, ended_at__isnull=True)
+        self.assertIsNone(entry.ended_at)
 
     def test_start_stops_existing_active_timer(self):
         _start_with_project_task(

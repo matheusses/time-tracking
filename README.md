@@ -10,6 +10,8 @@ A modular monolith time-tracking application built with **Django 5.2+**, **Postg
 
 The codebase follows clean layering: views call use cases, use cases call domain services, and only domain services use the Django ORM.
 
+**Timezone:** All datetimes are stored in the database in **UTC** (`TIME_ZONE = "UTC"`, `USE_TZ = True`). Timer start/stop and manual entry times are persisted in UTC.
+
 ---
 
 ## Setup and installation
